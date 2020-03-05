@@ -68,7 +68,7 @@ protected:
 	raw_data config;
 	dev_t system_dev;
 
-	void backup_files();
+	void backup_files(const char *self_path);
 	void patch_rootdir();
 public:
 	SARBase(char *argv[], cmdline *cmd) : MagiskInit(argv, cmd) {
@@ -138,7 +138,7 @@ protected:
 	void early_mount() override;
 public:
 	RootFSInit(char *argv[], cmdline *cmd) : MagiskInit(argv, cmd) {
-		persist_dir = "/dev/.magisk/mirror/persist/magisk";
+		persist_dir = "/dev/mnt/persist/magisk";
 	}
 
 	void start() override {

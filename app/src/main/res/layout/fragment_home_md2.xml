@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="viewModel"
+            type="com.topjohnwu.magisk.ui.home.HomeViewModel" />
+
+    </data>
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingTop="@{viewModel.insets.top + (int) @dimen/internal_action_bar_size}"
+        android:paddingBottom="@{viewModel.insets.bottom + (int) @dimen/l3}"
+        tools:layout_marginTop="24dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:orientation="vertical"
+            android:paddingTop="@dimen/l1">
+
+            <com.google.android.material.button.MaterialButton
+                android:layout_gravity="center"
+                style="@style/WidgetFoundation.Button"
+                gone="@{!viewModel.showTest}"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:onClick="@{() -> viewModel.onTestPressed()}"
+                android:text="TEST"
+                android:textAllCaps="false"
+                tools:visibility="gone"/>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/WidgetFoundation.Card.Primary"
+                goneUnless="@{viewModel.noticeVisible}"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/l1"
+                android:layout_marginEnd="@dimen/l1"
+                android:layout_marginBottom="@dimen/l1">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <TextView
+                        android:id="@+id/home_notice_content"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:padding="@dimen/l1"
+                        android:text="@string/home_notice_content"
+                        android:textAppearance="@style/AppearanceFoundation.Caption.OnPrimary"
+                        app:layout_constraintEnd_toStartOf="@+id/home_notice_hide"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/home_notice_hide"
+                        style="@style/WidgetFoundation.Button.Text.OnPrimary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:onClick="@{() -> viewModel.hideNotice()}"
+                        android:text="@string/hide"
+                        android:textAllCaps="false"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <include
+                android:id="@+id/home_magisk_wrapper"
+                layout="@layout/include_home_magisk"
+                viewModel="@{viewModel}"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/l1"
+                android:layout_marginEnd="@dimen/l1"
+                app:layout_constraintTop_toBottomOf="@+id/home_device_wrapper" />
+
+            <include
+                android:id="@+id/home_manager_wrapper"
+                layout="@layout/include_home_manager"
+                viewModel="@{viewModel}"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/l1"
+                android:layout_marginEnd="@dimen/l1"
+                android:layout_marginTop="@dimen/l1"
+                app:layout_constraintTop_toBottomOf="@+id/home_magisk_wrapper" />
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/WidgetFoundation.Card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:layout_margin="@dimen/l1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingTop="@dimen/l1">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/l1"
+                        android:layout_marginEnd="@dimen/l1"
+                        android:text="@string/home_support_title"
+                        android:textAppearance="@style/AppearanceFoundation.Title" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="@dimen/l1"
+                        android:layout_marginTop="@dimen/l_50"
+                        android:layout_marginEnd="@dimen/l1"
+                        android:text="@string/home_support_content"
+                        android:textAppearance="@style/AppearanceFoundation.Caption.Variant" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        dividerHorizontal="@{@drawable/divider_l1}"
+                        dividerVertical="@{@drawable/divider_l1}"
+                        itemBinding="@{viewModel.itemDeveloperBinding}"
+                        items="@{viewModel.items}"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/l1"
+                        android:clipToPadding="false"
+                        android:nestedScrollingEnabled="false"
+                        android:orientation="horizontal"
+                        android:overScrollMode="ifContentScrolls"
+                        android:paddingStart="@dimen/l1"
+                        app:layoutManager="androidx.recyclerview.widget.StaggeredGridLayoutManager"
+                        app:spanCount="2"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_developer" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</layout>

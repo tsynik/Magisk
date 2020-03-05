@@ -13,6 +13,8 @@ LIBNANOPB := $(EXT_PATH)/nanopb
 LIBSYSTEMPROPERTIES := jni/systemproperties/include
 LIBUTILS := jni/utils/include
 LIBMINCRYPT := $(EXT_PATH)/mincrypt/include
+LIBXZ := $(EXT_PATH)/xz-embedded
+LIBPCRE2 := $(EXT_PATH)/pcre/include
 
 ########################
 # Binaries
@@ -22,11 +24,9 @@ ifdef B_MAGISK
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := magisk
-LOCAL_SHARED_LIBRARIES := libsqlite
 LOCAL_STATIC_LIBRARIES := libnanopb libsystemproperties libutils
 LOCAL_C_INCLUDES := \
 	jni/include \
-	$(EXT_PATH)/include \
 	$(LIBNANOPB) \
 	$(LIBSYSTEMPROPERTIES) \
 	$(LIBUTILS)
@@ -57,31 +57,6 @@ include $(BUILD_EXECUTABLE)
 
 endif
 
-ifdef B_POLICY
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := magiskpolicy
-LOCAL_STATIC_LIBRARIES := libsepol libutils
-LOCAL_C_INCLUDES := \
-	jni/include \
-	$(LIBSEPOL) \
-	$(LIBUTILS)
-
-LOCAL_SRC_FILES := \
-	core/applet_stub.cpp \
-	magiskpolicy/api.cpp \
-	magiskpolicy/magiskpolicy.cpp \
-	magiskpolicy/rules.cpp \
-	magiskpolicy/policydb.cpp \
-	magiskpolicy/statement.cpp \
-	magiskpolicy/sepolicy.c
-
-LOCAL_CFLAGS := -DAPPLET_STUB_MAIN=magiskpolicy_main
-LOCAL_LDFLAGS := -static
-include $(BUILD_EXECUTABLE)
-
-endif
-
 include $(CLEAR_VARS)
 
 ifdef B_INIT
@@ -98,9 +73,9 @@ ifdef BB_INIT
 LOCAL_STATIC_LIBRARIES := libsepol libxz libutils
 LOCAL_C_INCLUDES := \
 	jni/include \
-	$(EXT_PATH)/include \
 	out \
 	out/$(TARGET_ARCH_ABI) \
+	$(LIBXZ) \
 	$(LIBSEPOL) \
 	$(LIBUTILS)
 
@@ -147,6 +122,55 @@ LOCAL_SRC_FILES := \
 	magiskboot/pattern.cpp
 
 LOCAL_LDLIBS := -lz
+LOCAL_LDFLAGS := -static
+include $(BUILD_EXECUTABLE)
+
+endif
+
+ifdef B_POLICY
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := magiskpolicy
+LOCAL_STATIC_LIBRARIES := libsepol libutils
+LOCAL_C_INCLUDES := \
+	jni/include \
+	$(LIBSEPOL) \
+	$(LIBUTILS)
+
+LOCAL_SRC_FILES := \
+	core/applet_stub.cpp \
+	magiskpolicy/api.cpp \
+	magiskpolicy/magiskpolicy.cpp \
+	magiskpolicy/rules.cpp \
+	magiskpolicy/policydb.cpp \
+	magiskpolicy/statement.cpp \
+	magiskpolicy/sepolicy.c
+
+LOCAL_CFLAGS := -DAPPLET_STUB_MAIN=magiskpolicy_main
+LOCAL_LDFLAGS := -static
+include $(BUILD_EXECUTABLE)
+
+endif
+
+ifdef B_PROP
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := resetprop
+LOCAL_STATIC_LIBRARIES := libnanopb libsystemproperties libutils
+LOCAL_C_INCLUDES := \
+	jni/include \
+	$(LIBNANOPB) \
+	$(LIBSYSTEMPROPERTIES) \
+	$(LIBUTILS)
+
+LOCAL_SRC_FILES := \
+	core/applet_stub.cpp \
+	resetprop/persist_properties.cpp \
+	resetprop/resetprop.cpp \
+	resetprop/system_property_api.cpp \
+	resetprop/system_property_set.cpp
+
+LOCAL_CFLAGS := -DAPPLET_STUB_MAIN=resetprop_main
 LOCAL_LDFLAGS := -static
 include $(BUILD_EXECUTABLE)
 

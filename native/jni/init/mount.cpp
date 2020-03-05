@@ -94,7 +94,7 @@ static bool read_dt_fstab(cmdline *cmd, const char *name) {
 	char path[128];
 	int fd;
 	sprintf(path, "%s/fstab/%s/dev", cmd->dt_dir, name);
-	if ((fd = xopen(path, O_RDONLY | O_CLOEXEC)) >= 0) {
+	if ((fd = open(path, O_RDONLY | O_CLOEXEC)) >= 0) {
 		read(fd, path, sizeof(path));
 		close(fd);
 		// Some custom treble use different names, so use what we read
@@ -119,26 +119,6 @@ if (!is_lnk("/" #name) && read_dt_fstab(cmd, #name)) { \
 	mount_list.emplace_back("/" #name); \
 }
 
-void RootFSInit::early_mount() {
-	full_read("/init", self.buf, self.sz);
-
-	LOGD("Reverting /init\n");
-	root = xopen("/", O_RDONLY | O_CLOEXEC);
-	rename("/.backup/init", "/init");
-
-	// Mount sbin overlay for persist, but move it and add to cleanup list
-	mount_sbin();
-	xmount("/sbin", "/dev", nullptr, MS_MOVE, nullptr);
-	mount_list.emplace_back("/dev");
-	mount_list.emplace_back("/dev/.magisk/mirror/persist");
-	mount_list.emplace_back("/dev/.magisk/mirror/cache");
-
-	mount_root(system);
-	mount_root(vendor);
-	mount_root(product);
-	mount_root(odm);
-}
-
 static void switch_root(const string &path) {
 	LOGD("Switch root to %s\n", path.data());
 	vector<string> mounts;
@@ -148,7 +128,7 @@ static void switch_root(const string &path) {
 			return true;
 		// Do not include subtrees
 		for (const auto &m : mounts) {
-			if (strncmp(me->mnt_dir, m.data(), m.length()) == 0)
+			if (strncmp(me->mnt_dir, m.data(), m.length()) == 0 && me->mnt_dir[m.length()] == '/')
 				return true;
 		}
 		mounts.emplace_back(me->mnt_dir);
@@ -157,18 +137,57 @@ static void switch_root(const string &path) {
 	for (auto &dir : mounts) {
 		auto new_path = path + dir;
 		mkdir(new_path.data(), 0755);
-		xmount(dir.data(), new_path.c_str(), nullptr, MS_MOVE, nullptr);
+		xmount(dir.data(), new_path.data(), nullptr, MS_MOVE, nullptr);
 	}
 	chdir(path.data());
 	xmount(path.data(), "/", nullptr, MS_MOVE, nullptr);
 	chroot(".");
 }
 
-void SARBase::backup_files() {
+static void mount_persist(const char *dev_base, const char *mnt_base) {
+	string mnt_point = mnt_base + "/persist"s;
+	strcpy(partname, "persist");
+	sprintf(block_dev, "%s/persist", dev_base);
+	if (setup_block(false) < 0) {
+		// Fallback to cache
+		strcpy(partname, "cache");
+		sprintf(block_dev, "%s/cache", dev_base);
+		if (setup_block(false) < 0) {
+			// Try NVIDIA's BS
+			strcpy(partname, "CAC");
+			if (setup_block(false) < 0)
+				return;
+		}
+		xsymlink("./cache", mnt_point.data());
+		mnt_point = mnt_base + "/cache"s;
+	}
+	xmkdir(mnt_point.data(), 0755);
+	xmount(block_dev, mnt_point.data(), "ext4", 0, nullptr);
+}
+
+void RootFSInit::early_mount() {
+	full_read("/init", self.buf, self.sz);
+
+	LOGD("Reverting /init\n");
+	root = xopen("/", O_RDONLY | O_CLOEXEC);
+	rename("/.backup/init", "/init");
+
+	mount_root(system);
+	mount_root(vendor);
+	mount_root(product);
+	mount_root(odm);
+
+	xmkdir("/dev/mnt", 0755);
+	mount_persist("/dev/block", "/dev/mnt");
+	mount_list.emplace_back("/dev/mnt/persist");
+	mount_list.emplace_back("/dev/mnt/cache");
+}
+
+void SARBase::backup_files(const char *self_path) {
 	if (access("/overlay.d", F_OK) == 0)
 		cp_afc("/overlay.d", "/dev/overlay.d");
 
-	full_read("/init", self.buf, self.sz);
+	full_read(self_path, self.buf, self.sz);
 	full_read("/.backup/.magisk", config.buf, config.sz);
 }
 
@@ -178,7 +197,7 @@ void SARInit::early_mount() {
 	xmount("tmpfs", "/dev", "tmpfs", 0, "mode=755");
 	mount_list.emplace_back("/dev");
 
-	backup_files();
+	backup_files("/init");
 
 	LOGD("Cleaning rootfs\n");
 	int root = xopen("/", O_RDONLY | O_CLOEXEC);
@@ -192,7 +211,7 @@ void SARInit::early_mount() {
 	if (dev < 0) {
 		// Try NVIDIA naming scheme
 		strcpy(partname, "APP");
-		dev = setup_block();
+		dev = setup_block(false);
 		if (dev < 0) {
 			// We don't really know what to do at this point...
 			LOGE("Cannot find root partition, abort\n");
@@ -213,7 +232,7 @@ void SARInit::early_mount() {
 void SecondStageInit::early_mount() {
 	// Early mounts should already be done by first stage init
 
-	backup_files();
+	backup_files("/system/bin/init");
 	rm_rf("/system");
 	rm_rf("/.backup");
 	rm_rf("/overlay.d");
@@ -250,23 +269,5 @@ void mount_sbin() {
 	xmkdir(MIRRDIR, 0);
 	xmkdir(BLOCKDIR, 0);
 
-	// Mount persist partition
-	strcpy(partname, "persist");
-	strcpy(block_dev, BLOCKDIR "/persist");
-	const char *mnt_point = MIRRDIR "/persist";
-	if (setup_block(false) < 0) {
-		// Fallback to cache
-		strcpy(partname, "cache");
-		strcpy(block_dev, BLOCKDIR "/cache");
-		if (setup_block(false) < 0) {
-			// Try NVIDIA's BS
-			strcpy(partname, "CAC");
-			if (setup_block(false) < 0)
-				return;
-		}
-		mnt_point = MIRRDIR "/cache";
-		xsymlink("./cache", MIRRDIR "/persist");
-	}
-	xmkdir(mnt_point, 0755);
-	xmount(block_dev, mnt_point, "ext4", 0, nullptr);
+	mount_persist(BLOCKDIR, MIRRDIR);
 }

@@ -341,12 +341,9 @@ static bool magisk_env() {
 
 	// Remove stuffs
 	rm_rf("/cache/data_adb");
+	rm_rf("/data/adb/modules/.core");
 	unlink("/data/magisk.img");
 	unlink("/data/magisk_debug.log");
-
-	// Backwards compatibility
-	symlink("./.magisk", "/sbin/.core");
-	symlink("./modules", MAGISKTMP "/img");
 
 	// Directories in tmpfs overlay
 	xmkdir(MIRRDIR, 0);
@@ -396,9 +393,8 @@ static bool magisk_env() {
 		VLOGI("link", MIRRMNT(system) "/product", MIRRMNT(product));
 	}
 
-	// Disable/remove magiskhide, resetprop, and modules
+	// Disable/remove magiskhide, resetprop
 	if (SDK_INT < 19) {
-		close(xopen(DISABLEFILE, O_RDONLY | O_CREAT | O_CLOEXEC, 0));
 		unlink("/sbin/resetprop");
 		unlink("/sbin/magiskhide");
 	}
@@ -414,7 +410,7 @@ static bool magisk_env() {
 
 static void prepare_modules() {
 	// Upgrade modules
-	if (auto dir = xopen_dir(MODULEUPGRADE); dir) {
+	if (auto dir = open_dir(MODULEUPGRADE); dir) {
 		for (dirent *entry; (entry = xreaddir(dir.get()));) {
 			if (entry->d_type == DT_DIR) {
 				if (entry->d_name == "."sv || entry->d_name == ".."sv)
@@ -431,10 +427,6 @@ static void prepare_modules() {
 		rm_rf(MODULEUPGRADE);
 	}
 	bind_mount(MIRRDIR MODULEROOT, MODULEMNT, false);
-	// Legacy support
-	xmkdir(LEGACYCORE, 0755);
-	symlink(SECURE_DIR "/post-fs-data.d", LEGACYCORE "/post-fs-data.d");
-	symlink(SECURE_DIR "/service.d", LEGACYCORE "/service.d");
 
 	restorecon();
 	chmod(SECURE_DIR, 0700);
@@ -481,6 +473,7 @@ static void collect_modules() {
 				if (access(buf, F_OK) == 0)
 					exec_script(buf);
 				frm_rf(modfd);
+				unlinkat(dfd, entry->d_name, AT_REMOVEDIR);
 				continue;
 			}
 

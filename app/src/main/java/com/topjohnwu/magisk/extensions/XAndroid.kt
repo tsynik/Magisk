@@ -1,5 +1,6 @@
 package com.topjohnwu.magisk.extensions
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
@@ -22,17 +23,20 @@ import android.os.Build
 import android.os.Build.VERSION.SDK_INT
 import android.provider.OpenableColumns
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
 import androidx.core.net.toFile
 import androidx.core.net.toUri
-import com.topjohnwu.magisk.Const
+import androidx.fragment.app.Fragment
 import com.topjohnwu.magisk.FileProvider
+import com.topjohnwu.magisk.core.Const
+import com.topjohnwu.magisk.core.utils.Utils
+import com.topjohnwu.magisk.core.utils.currentLocale
 import com.topjohnwu.magisk.utils.DynamicClassLoader
-import com.topjohnwu.magisk.utils.Utils
-import com.topjohnwu.magisk.utils.currentLocale
 import com.topjohnwu.superuser.Shell
 import java.io.File
 import java.io.FileNotFoundException
@@ -283,7 +287,7 @@ fun Context.drawableCompat(@DrawableRes id: Int) = ContextCompat.getDrawable(thi
  * with respect to RTL layout direction
  */
 fun Context.startEndToLeftRight(start: Int, end: Int): Pair<Int, Int> {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 &&
+    if (SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 &&
         resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
     ) {
         return end to start
@@ -294,10 +298,10 @@ fun Context.startEndToLeftRight(start: Int, end: Int): Pair<Int, Int> {
 fun Context.openUrl(url: String) = Utils.openLink(this, url.toUri())
 
 @Suppress("FunctionName")
-inline fun <reified T> T.DynamicClassLoader(apk: File)
-        = DynamicClassLoader(apk, T::class.java.classLoader)
+inline fun <reified T> T.DynamicClassLoader(apk: File) =
+    DynamicClassLoader(apk, T::class.java.classLoader)
 
-fun Context.unwrap() : Context {
+fun Context.unwrap(): Context {
     var context = this
     while (true) {
         if (context is ContextWrapper)
@@ -309,3 +313,18 @@ fun Context.unwrap() : Context {
 }
 
 fun Uri.writeTo(file: File) = toFile().copyTo(file)
+
+fun Context.hasPermissions(vararg permissions: String) = permissions.all {
+    ContextCompat.checkSelfPermission(this, it) == PERMISSION_GRANTED
+}
+
+fun Activity.hideKeyboard() {
+    val view = currentFocus ?: return
+    getSystemService<InputMethodManager>()
+        ?.hideSoftInputFromWindow(view.windowToken, 0)
+    view.clearFocus()
+}
+
+fun Fragment.hideKeyboard() {
+    activity?.hideKeyboard()
+}
