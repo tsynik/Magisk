@@ -13,11 +13,10 @@
 #include <lz4frame.h>
 #include <lz4hc.h>
 
-#include <logging.h>
-#include <utils.h>
+#include <utils.hpp>
 
-#include "magiskboot.h"
-#include "compress.h"
+#include "magiskboot.hpp"
+#include "compress.hpp"
 
 using namespace std;
 

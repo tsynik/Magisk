@@ -3,10 +3,10 @@ package com.topjohnwu.magisk.ui.home
 import android.os.Bundle
 import android.view.*
 import com.topjohnwu.magisk.R
+import com.topjohnwu.magisk.arch.BaseUIFragment
+import com.topjohnwu.magisk.core.download.BaseDownloadService
 import com.topjohnwu.magisk.databinding.FragmentHomeMd2Binding
-import com.topjohnwu.magisk.model.events.RebootEvent
-import com.topjohnwu.magisk.model.navigation.Navigation
-import com.topjohnwu.magisk.ui.base.BaseUIFragment
+import com.topjohnwu.magisk.events.RebootEvent
 import com.topjohnwu.superuser.Shell
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -19,6 +19,7 @@ class HomeFragment : BaseUIFragment<HomeViewModel, FragmentHomeMd2Binding>() {
         super.onStart()
         activity.title = resources.getString(R.string.section_home)
         setHasOptionsMenu(true)
+        BaseDownloadService.observeProgress(this, viewModel::onProgressUpdate)
     }
 
     override fun onCreateView(
@@ -46,7 +47,8 @@ class HomeFragment : BaseUIFragment<HomeViewModel, FragmentHomeMd2Binding>() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.action_settings -> Navigation.settings().dispatchOnSelf()
+        R.id.action_settings -> HomeFragmentDirections.actionHomeFragmentToSettingsFragment()
+            .navigate()
         R.id.action_reboot -> RebootEvent.inflateMenu(activity).show()
         else -> null
     }?.let { true } ?: super.onOptionsItemSelected(item)

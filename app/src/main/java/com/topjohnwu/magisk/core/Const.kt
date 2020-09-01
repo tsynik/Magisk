@@ -1,19 +1,19 @@
 package com.topjohnwu.magisk.core
 
 import android.os.Process
-import java.io.File
+import com.topjohnwu.magisk.BuildConfig
 
 object Const {
 
     // Paths
-    const val MAGISK_PATH = "/sbin/.magisk/modules"
-    var MAGISK_DISABLE_FILE = File("xxx")
+    lateinit var MAGISKTMP: String
+    val MAGISK_PATH get() = "$MAGISKTMP/modules"
     const val TMP_FOLDER_PATH = "/dev/tmp"
     const val MAGISK_LOG = "/cache/magisk.log"
 
     // Versions
-    const val SNET_EXT_VER = 13
-    const val SNET_REVISION = "a6c47f86f10b310358afa9dbe837037dd5d561df"
+    const val SNET_EXT_VER = 15
+    const val SNET_REVISION = "d494bc726e86166913a13629e3b1336728ec5d7f"
     const val BOOTCTL_REVISION = "a6c47f86f10b310358afa9dbe837037dd5d561df"
 
     // Misc
@@ -25,8 +25,10 @@ object Const {
     object Version {
         const val MIN_VERSION = "v19.0"
         const val MIN_VERCODE = 19000
-        const val CONNECT_MODE = 20100
-        const val PROVIDER_CONNECT = 20102
+
+        fun atLeast_20_2() = Info.env.magiskVersionCode >= 20200
+        fun atLeast_20_4() = Info.env.magiskVersionCode >= 20400
+        fun atLeastCanary() = Info.env.magiskVersionCode > BuildConfig.LATEST_MAGISK / 100 * 100
     }
 
     object ID {
@@ -64,6 +66,7 @@ object Const {
         const val OPEN_SECTION = "section"
         const val OPEN_SETTINGS = "settings"
         const val INTENT_SET_APP = "app_json"
+        const val FLASH_INSTALLER = "installer"
         const val FLASH_ACTION = "action"
         const val FLASH_DATA = "additional_data"
         const val DISMISS_ID = "dismiss_id"
@@ -79,4 +82,11 @@ object Const {
         const val UNINSTALL = "uninstall"
     }
 
+    object Nav {
+        const val HOME = "home"
+        const val SETTINGS = "settings"
+        const val HIDE = "hide"
+        const val MODULES = "modules"
+        const val SUPERUSER = "superuser"
+    }
 }

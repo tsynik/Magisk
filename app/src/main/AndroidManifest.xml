@@ -6,8 +6,12 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
+        android:icon="@drawable/ic_launcher"
         android:name="a.e"
         android:allowBackup="true"
         tools:ignore="UnusedAttribute,GoogleAppIndexingWarning">
@@ -29,16 +33,12 @@
         <!-- Main -->
         <activity android:name="a.b" />
 
-        <!-- Flashing  -->
-        <activity android:name="a.f" />
-
         <!-- Superuser -->
         <activity
             android:name="a.m"
             android:directBootAware="true"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
             tools:ignore="AppLinkUrlError">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

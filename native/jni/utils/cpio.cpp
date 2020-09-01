@@ -4,9 +4,8 @@
 #include <stdlib.h>
 #include <algorithm>
 
-#include <utils.h>
-#include <logging.h>
-#include <cpio.h>
+#include <utils.hpp>
+#include <cpio.hpp>
 
 using namespace std;
 

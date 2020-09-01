@@ -17,7 +17,7 @@
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/hide_content"
-            dividerVertical="@{@drawable/divider_l1}"
+            dividerVertical="@{@drawable/divider_l_50}"
             invisibleUnless="@{viewModel.loaded || !viewModel.items.empty}"
             itemBinding="@{viewModel.itemBinding}"
             items="@{viewModel.items}"
@@ -28,7 +28,7 @@
             android:paddingStart="@dimen/l1"
             android:paddingTop="@{viewModel.insets.top + (int) @dimen/internal_action_bar_size + (int) @dimen/l1}"
             android:paddingEnd="@dimen/l1"
-            android:paddingBottom="@{viewModel.insets.bottom}"
+            android:paddingBottom="@{viewModel.insets.bottom + (int) @dimen/internal_action_bar_size + (int) @dimen/l1}"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/item_hide_md2"
             tools:paddingTop="40dp" />
@@ -70,9 +70,10 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:gravity="center"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            tools:visibility="gone">
 
-            <androidx.appcompat.widget.AppCompatTextView
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/safetynet_attest_loading"

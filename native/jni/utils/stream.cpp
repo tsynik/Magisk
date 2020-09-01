@@ -1,6 +1,5 @@
-#include <utils.h>
-#include <logging.h>
-#include <stream.h>
+#include <utils.hpp>
+#include <stream.hpp>
 
 static int strm_read(void *v, char *buf, int len) {
 	auto strm = reinterpret_cast<stream *>(v);

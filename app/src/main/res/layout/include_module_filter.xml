@@ -28,7 +28,6 @@
             dividerVertical="@{@drawable/divider_l1}"
             itemBinding="@{viewModel.itemSearchBinding}"
             items="@{viewModel.itemsSearch}"
-            spanCount="@{Config.listSpanCount}"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_marginBottom="@dimen/l1"
@@ -41,7 +40,7 @@
             app:fastScrollHorizontalTrackDrawable="@drawable/fast_scroll_track"
             app:fastScrollVerticalThumbDrawable="@drawable/fast_scroll_thumb"
             app:fastScrollVerticalTrackDrawable="@drawable/fast_scroll_track"
-            app:layoutManager="androidx.recyclerview.widget.StaggeredGridLayoutManager"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             app:layout_constrainedHeight="true"
             app:layout_constraintBottom_toTopOf="@+id/module_filter_title_search"
             app:layout_constraintTop_toTopOf="parent"
@@ -55,7 +54,7 @@
             android:background="@drawable/bg_shadow"
             app:layout_constraintBottom_toBottomOf="@+id/module_filter_list" />
 
-        <androidx.appcompat.widget.AppCompatTextView
+        <TextView
             android:id="@+id/module_filter_title_search"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -82,7 +81,7 @@
             app:layout_constraintEnd_toStartOf="@+id/module_filter_done"
             app:layout_constraintStart_toStartOf="parent">
 
-            <androidx.appcompat.widget.AppCompatImageView
+            <ImageView
                 style="@style/WidgetFoundation.Icon"
                 android:layout_width="48dp"
                 android:layout_height="36dp"
@@ -91,7 +90,7 @@
                 app:srcCompat="@drawable/ic_search_md2"
                 app:tint="?colorDisabled" />
 
-            <androidx.appcompat.widget.AppCompatEditText
+            <EditText
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="48dp"
