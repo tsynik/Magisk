@@ -54,3 +54,5 @@
 -dontnote **
 -dontwarn com.caverock.androidsvg.**
 -dontwarn ru.noties.markwon.**
+
+-keepnames class androidx.navigation.fragment.NavHostFragment
