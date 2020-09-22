@@ -14,6 +14,7 @@ import com.topjohnwu.magisk.core.model.MagiskJson
 import com.topjohnwu.magisk.core.model.ManagerJson
 import com.topjohnwu.magisk.data.repository.MagiskRepository
 import com.topjohnwu.magisk.events.OpenInappLinkEvent
+import com.topjohnwu.magisk.events.SnackbarEvent
 import com.topjohnwu.magisk.events.dialog.EnvFixDialog
 import com.topjohnwu.magisk.events.dialog.ManagerInstallDialog
 import com.topjohnwu.magisk.events.dialog.UninstallDialog
@@ -52,7 +53,6 @@ class HomeViewModel(
 
     val magiskInstalledVersion get() =
         "${Info.env.magiskVersionString} (${Info.env.magiskVersionCode})"
-    val magiskMode get() = R.string.home_status_normal.res()
 
     @get:Bindable
     var managerRemoteVersion = R.string.loading.res()
@@ -71,6 +71,9 @@ class HomeViewModel(
     val showUninstall get() =
         Info.env.magiskVersionCode > 0 && stateMagisk != MagiskState.LOADING && isConnected.get()
 
+    @get:Bindable
+    val showSafetyNet get() = Info.hasGMS && isConnected.get()
+
     val itemBinding = itemBindingOf<IconLink> {
         it.bindExtra(BR.viewModel, this)
     }
@@ -78,8 +81,11 @@ class HomeViewModel(
     private var shownDialog = false
 
     override fun refresh() = viewModelScope.launch {
+        state = State.LOADING
         notifyPropertyChanged(BR.showUninstall)
+        notifyPropertyChanged(BR.showSafetyNet)
         repoMagisk.fetchUpdate()?.apply {
+            state = State.LOADED
             stateMagisk = when {
                 !Info.env.isActive -> MagiskState.NOT_INSTALLED
                 magisk.isObsolete -> MagiskState.OBSOLETE
@@ -100,7 +106,7 @@ class HomeViewModel(
             launch {
                 ensureEnv()
             }
-        }
+        } ?: apply { state = State.LOADING_FAILED }
     }
 
     val showTest = false
@@ -121,10 +127,14 @@ class HomeViewModel(
 
     fun onDeletePressed() = UninstallDialog().publish()
 
-    fun onManagerPressed() = ManagerInstallDialog().publish()
+    fun onManagerPressed() =
+        if (isConnected.get()) ManagerInstallDialog().publish()
+        else SnackbarEvent(R.string.no_connection).publish()
 
-    fun onMagiskPressed() = withExternalRW {
+    fun onMagiskPressed() = if (isConnected.get()) withExternalRW {
         HomeFragmentDirections.actionHomeFragmentToInstallFragment().publish()
+    } else {
+        SnackbarEvent(R.string.no_connection).publish()
     }
 
     fun onSafetyNetPressed() =

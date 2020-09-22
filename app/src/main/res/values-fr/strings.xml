@@ -28,7 +28,7 @@
     <string name="home_support_content">Magisk est, et sera toujours, libre et open source. Vous pouvez cependant nous témoigner de votre soutien en envoyant un petit don.</string>
     <string name="home_status_normal">Normal</string>
     <string name="home_status_stub">Stub</string>
-    <string name="home_installed_version">Installée</string>
+    <string name="home_installed_version">Installé</string>
     <string name="home_latest_version">Dernière</string>
     <string name="invalid_update_channel">Canal de mise à jour invalide</string>
     <string name="uninstall_magisk_title">Désinstaller Magisk</string>
@@ -175,6 +175,8 @@
     <string name="no_biometric">L’appareil n’est pas pris en charge ou alors aucun paramètre biométrique n’est activé</string>
     <string name="settings_customization">Personnalisation</string>
     <string name="setting_add_shortcut_summary">Ajouter un joli raccourci dans l’écran d’accueil au cas où le nom et l’icône seraient difficiles à reconnaître après avoir masqué l’application</string>
+    <string name="settings_doh_title">DNS sur HTTPS</string>
+    <string name="settings_doh_description">Contournement de la censure du DNS dans certains pays</string>
 
     <string name="multiuser_mode">Mode multi‑utilisateur</string>
     <string name="settings_owner_only">Propriétaire de l’appareil uniquement</string>

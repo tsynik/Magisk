@@ -6,6 +6,7 @@
     <data>
 
         <import type="com.topjohnwu.magisk.core.Info" />
+
         <import type="com.topjohnwu.magisk.core.Config" />
 
         <variable
@@ -36,13 +37,13 @@
                 android:paddingTop="@dimen/l1">
 
                 <com.google.android.material.card.MaterialCardView
+                    style="@style/WidgetFoundation.Card"
                     gone="@{viewModel.skipOptions}"
-                    style="@style/WidgetFoundation.Card.Variant"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/l1"
                     android:layout_marginEnd="@dimen/l1"
-                    app:strokeWidth="@{viewModel.step != 0 ? 0f : @dimen/l_125}">
+                    android:focusable="false">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -64,11 +65,11 @@
                                 android:layout_width="0dp"
                                 android:layout_height="match_parent"
                                 android:layout_marginStart="@dimen/l1"
+                                android:layout_weight="1"
+                                android:gravity="center_vertical"
                                 android:text="@string/install_options_title"
                                 android:textAppearance="@style/AppearanceFoundation.Body"
-                                android:textStyle="bold"
-                                android:gravity="center_vertical"
-                                android:layout_weight="1"/>
+                                android:textStyle="bold" />
 
                             <Button
                                 style="@style/WidgetFoundation.Button.Text"
@@ -84,45 +85,39 @@
                             gone="@{viewModel.step != 0}"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:paddingStart="3dp"
-                            android:paddingEnd="3dp"
                             android:layout_marginStart="@dimen/l1"
                             android:layout_marginTop="@dimen/l_50"
                             android:layout_marginEnd="@dimen/l1"
                             android:layout_marginBottom="@dimen/l_50"
+                            android:orientation="vertical"
+                            android:paddingStart="3dp"
+                            android:paddingEnd="3dp"
                             tools:layout_gravity="center">
 
                             <CheckBox
-                                gone="@{Info.isSAR}"
                                 style="@style/WidgetFoundation.Checkbox"
-                                android:layout_width="wrap_content"
+                                gone="@{Info.isSAR}"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_gravity="start|center_vertical"
                                 android:checked="@={Config.keepVerity}"
-                                android:gravity="center"
                                 android:text="@string/keep_dm_verity"
                                 tools:checked="true" />
 
                             <CheckBox
-                                gone="@{Info.isFBE}"
                                 style="@style/WidgetFoundation.Checkbox"
-                                android:layout_width="wrap_content"
+                                gone="@{Info.isFBE}"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_gravity="start|center_vertical"
                                 android:checked="@={Config.keepEnc}"
-                                android:gravity="center"
                                 android:text="@string/keep_force_encryption"
                                 app:tint="?colorPrimary" />
 
                             <CheckBox
-                                gone="@{Info.ramdisk}"
                                 style="@style/WidgetFoundation.Checkbox"
-                                android:layout_width="wrap_content"
+                                gone="@{Info.ramdisk}"
+                                android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:layout_gravity="start|center_vertical"
                                 android:checked="@={Config.recovery}"
-                                android:gravity="center"
                                 android:text="@string/recovery_mode"
                                 app:tint="?colorPrimary" />
 
@@ -133,13 +128,13 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/WidgetFoundation.Card.Variant"
+                    style="@style/WidgetFoundation.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/l1"
                     android:layout_marginTop="@dimen/l1"
                     android:layout_marginEnd="@dimen/l1"
-                    app:strokeWidth="@{viewModel.step != 1 ? 0f : @dimen/l_125}">
+                    android:focusable="false">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -161,11 +156,11 @@
                                 android:layout_width="0dp"
                                 android:layout_height="match_parent"
                                 android:layout_marginStart="@dimen/l1"
+                                android:layout_weight="1"
+                                android:gravity="center_vertical"
                                 android:text="@string/install_method_title"
                                 android:textAppearance="@style/AppearanceFoundation.Body"
-                                android:textStyle="bold"
-                                android:gravity="center_vertical"
-                                android:layout_weight="1"/>
+                                android:textStyle="bold" />
 
                             <Button
                                 style="@style/WidgetFoundation.Button.Text"
@@ -176,7 +171,7 @@
                                 android:onClick="@{() -> viewModel.install()}"
                                 android:text="@string/install_start"
                                 app:icon="@drawable/ic_forth_md2"
-                                app:iconGravity="textEnd"/>
+                                app:iconGravity="textEnd" />
 
                         </LinearLayout>
 
@@ -230,22 +225,24 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <com.google.android.material.card.MaterialCardView
-                    style="@style/WidgetFoundation.Card.Variant"
+                    style="@style/WidgetFoundation.Card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/l1"
                     android:layout_marginStart="@dimen/l1"
                     android:layout_marginEnd="@dimen/l1"
-                    app:strokeWidth="@{viewModel.step != 0 ? 0f : @dimen/l_125}">
+                    android:focusable="false">
 
                     <TextView
                         android:id="@+id/release_notes"
+                        markdownText="@{viewModel.notes}"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_margin="15dp"
                         android:textAppearance="@style/AppearanceFoundation.Caption"
                         android:visibility="gone"
-                        markdownText="@{viewModel.notes}"/>
+                        tools:maxLines="5"
+                        tools:text="@tools:sample/lorem/random"
+                        tools:visibility="visible" />
 
                 </com.google.android.material.card.MaterialCardView>
 

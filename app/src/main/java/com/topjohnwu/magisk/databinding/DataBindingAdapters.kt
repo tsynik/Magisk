@@ -1,17 +1,23 @@
 package com.topjohnwu.magisk.databinding
 
 import android.animation.ValueAnimator
+import android.content.res.ColorStateList
 import android.graphics.Paint
 import android.graphics.drawable.Drawable
-import android.view.ContextThemeWrapper
+import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.Button
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.Toolbar
+import androidx.cardview.widget.CardView
 import androidx.core.view.isGone
 import androidx.core.view.isInvisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.ImageViewCompat
 import androidx.databinding.BindingAdapter
 import androidx.databinding.InverseBindingAdapter
 import androidx.databinding.InverseBindingListener
@@ -253,29 +259,6 @@ fun TextView.setStrikeThroughEnabled(useStrikeThrough: Boolean) {
     }
 }
 
-interface OnPopupMenuItemClickListener {
-    fun onMenuItemClick(itemId: Int)
-}
-
-@BindingAdapter("popupMenu", "popupMenuOnClickListener", requireAll = false)
-fun View.setPopupMenu(popupMenu: Int, listener: OnPopupMenuItemClickListener) {
-    val menu = tag as? PopupMenu ?: let {
-        val themeWrapper = ContextThemeWrapper(context, R.style.Foundation_PopupMenu)
-        PopupMenu(themeWrapper, this)
-    }
-    tag = menu.apply {
-        this.menu.clear()
-        menuInflater.inflate(popupMenu, this.menu)
-        setOnMenuItemClickListener {
-            listener.onMenuItemClick(it.itemId)
-            true
-        }
-    }
-    setOnClickListener {
-        (tag as PopupMenu).show()
-    }
-}
-
 @BindingAdapter("spanCount")
 fun RecyclerView.setSpanCount(count: Int) {
     when (val lama = layoutManager) {
@@ -301,4 +284,30 @@ fun setListeners(
     view.setOnStateChangedListener { _, _ ->
         attrChange.onChange()
     }
+}
+
+@BindingAdapter("cardBackgroundColorAttr")
+fun CardView.setCardBackgroundColorAttr(attr: Int) {
+    val tv = TypedValue()
+    context.theme.resolveAttribute(attr, tv, true)
+    setCardBackgroundColor(tv.data)
+}
+
+@BindingAdapter("tint")
+fun ImageView.setTint(color: Int) {
+    ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(color))
+}
+
+@BindingAdapter("tintAttr")
+fun ImageView.setTintAttr(attr: Int) {
+    val tv = TypedValue()
+    context.theme.resolveAttribute(attr, tv, true)
+    ImageViewCompat.setImageTintList(this, ColorStateList.valueOf(tv.data))
+}
+
+@BindingAdapter("textColorAttr")
+fun TextView.setTextColorAttr(attr: Int) {
+    val tv = TypedValue()
+    context.theme.resolveAttribute(attr, tv, true)
+    setTextColor(tv.data)
 }
