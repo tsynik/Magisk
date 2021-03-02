@@ -20,7 +20,7 @@ val viewModelModules = module {
     viewModel { HideViewModel() }
     viewModel { HomeViewModel(get()) }
     viewModel { LogViewModel(get()) }
-    viewModel { ModuleViewModel(get(), get(), get()) }
+    viewModel { ModuleViewModel(get(), get()) }
     viewModel { SafetynetViewModel() }
     viewModel { SettingsViewModel(get()) }
     viewModel { SuperuserViewModel(get(), get()) }
@@ -29,6 +29,6 @@ val viewModelModules = module {
     viewModel { MainViewModel() }
 
     // Legacy
-    viewModel { (args: FlashFragmentArgs) -> FlashViewModel(args, get()) }
+    viewModel { (args: FlashFragmentArgs) -> FlashViewModel(args) }
     viewModel { SuRequestViewModel(get(), get(), get(SUTimeout), get()) }
 }

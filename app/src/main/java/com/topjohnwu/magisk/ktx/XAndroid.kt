@@ -1,15 +1,17 @@
 package com.topjohnwu.magisk.ktx
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.ApplicationInfo
-import android.content.pm.ComponentInfo
-import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.PackageManager.*
+import android.content.pm.ServiceInfo
+import android.content.pm.ServiceInfo.FLAG_ISOLATED_PROCESS
+import android.content.pm.ServiceInfo.FLAG_USE_APP_ZYGOTE
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.database.Cursor
@@ -19,8 +21,8 @@ import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.LayerDrawable
 import android.net.Uri
-import android.os.Build
 import android.os.Build.VERSION.SDK_INT
+import android.system.Os
 import android.text.PrecomputedText
 import android.view.View
 import android.view.ViewGroup
@@ -39,11 +41,13 @@ import androidx.core.widget.TextViewCompat
 import androidx.databinding.BindingAdapter
 import androidx.fragment.app.Fragment
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
+import androidx.lifecycle.lifecycleScope
 import androidx.transition.AutoTransition
 import androidx.transition.TransitionManager
 import com.topjohnwu.magisk.R
+import com.topjohnwu.magisk.core.AssetHack
 import com.topjohnwu.magisk.core.Const
-import com.topjohnwu.magisk.core.ResMgr
+import com.topjohnwu.magisk.core.base.BaseActivity
 import com.topjohnwu.magisk.core.utils.currentLocale
 import com.topjohnwu.magisk.utils.DynamicClassLoader
 import com.topjohnwu.magisk.utils.Utils
@@ -53,34 +57,30 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.File
+import java.lang.reflect.Method
 import java.lang.reflect.Array as JArray
 
 val packageName: String get() = get<Context>().packageName
 
-val PackageInfo.processes
-    get() = activities?.processNames.orEmpty() +
-            services?.processNames.orEmpty() +
-            receivers?.processNames.orEmpty() +
-            providers?.processNames.orEmpty()
+private lateinit var osSymlink: Method
+private lateinit var os: Any
 
-val Array<out ComponentInfo>.processNames get() = mapNotNull { it.processName }
-
-val ApplicationInfo.packageInfo: PackageInfo get() {
-    val pm = get<PackageManager>()
-
-    return try {
-        val request = GET_ACTIVITIES or GET_SERVICES or GET_RECEIVERS or GET_PROVIDERS
-        pm.getPackageInfo(packageName, request)
-    } catch (e: Exception) {
-        // Exceed binder data transfer limit, fetch each component type separately
-        pm.getPackageInfo(packageName, 0).apply {
-            runCatching { activities = pm.getPackageInfo(packageName, GET_ACTIVITIES).activities }
-            runCatching { services = pm.getPackageInfo(packageName, GET_SERVICES).services }
-            runCatching { receivers = pm.getPackageInfo(packageName, GET_RECEIVERS).receivers }
-            runCatching { providers = pm.getPackageInfo(packageName, GET_PROVIDERS).providers }
+fun symlink(oldPath: String, newPath: String) {
+    if (SDK_INT >= 21) {
+        Os.symlink(oldPath, newPath)
+    } else {
+        if (!::osSymlink.isInitialized) {
+            os = Class.forName("libcore.io.Libcore").getField("os").get(null)!!
+            osSymlink = os.javaClass.getMethod("symlink", String::class.java, String::class.java)
         }
+        osSymlink.invoke(os, oldPath, newPath)
     }
 }
+
+val ServiceInfo.isIsolated get() = (flags and FLAG_ISOLATED_PROCESS) != 0
+
+@get:SuppressLint("InlinedApi")
+val ServiceInfo.useAppZygote get() = (flags and FLAG_USE_APP_ZYGOTE) != 0
 
 fun Context.rawResource(id: Int) = resources.openRawResource(id)
 
@@ -100,6 +100,11 @@ fun Context.getBitmap(id: Int): Bitmap {
     drawable.draw(canvas)
     return bitmap
 }
+
+val Context.deviceProtectedContext: Context get() =
+    if (SDK_INT >= 24) {
+        createDeviceProtectedStorageContext()
+    } else { this }
 
 fun Intent.startActivity(context: Context) = context.startActivity(this)
 
@@ -245,15 +250,13 @@ fun Context.colorStateListCompat(@ColorRes id: Int) = try {
     null
 }
 
-fun Context.drawableCompat(@DrawableRes id: Int) = ContextCompat.getDrawable(this, id)
+fun Context.drawableCompat(@DrawableRes id: Int) = AppCompatResources.getDrawable(this, id)
 /**
  * Pass [start] and [end] dimensions, function will return left and right
  * with respect to RTL layout direction
  */
 fun Context.startEndToLeftRight(start: Int, end: Int): Pair<Int, Int> {
-    if (SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 &&
-        resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL
-    ) {
+    if (resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL) {
         return end to start
     }
     return start to end
@@ -313,8 +316,21 @@ fun ViewGroup.startAnimations() {
     )
 }
 
+val View.activity: Activity get() {
+    var context = context
+    while(true) {
+        if (context !is ContextWrapper)
+            error("View is not attached to activity")
+        if (context is Activity)
+            return context
+        context = context.baseContext
+    }
+}
+
 var View.coroutineScope: CoroutineScope
-    get() = getTag(R.id.coroutineScope) as? CoroutineScope ?: GlobalScope
+    get() = getTag(R.id.coroutineScope) as? CoroutineScope
+        ?: (activity as? BaseActivity)?.lifecycleScope
+        ?: GlobalScope
     set(value) = setTag(R.id.coroutineScope, value)
 
 @set:BindingAdapter("precomputedText")
@@ -364,6 +380,16 @@ var TextView.precomputedText: CharSequence
     }
 
 fun Int.dpInPx(): Int {
-    val scale = ResMgr.resource.displayMetrics.density
+    val scale = AssetHack.resource.displayMetrics.density
     return (this * scale + 0.5).toInt()
+}
+
+@SuppressLint("PrivateApi")
+fun getProperty(key: String, def: String): String {
+    runCatching {
+        val clazz = Class.forName("android.os.SystemProperties")
+        val get = clazz.getMethod("get", String::class.java, String::class.java)
+        return get.invoke(clazz, key, def) as String
+    }
+    return def
 }

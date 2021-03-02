@@ -12,14 +12,13 @@ import com.topjohnwu.magisk.utils.set
 import com.topjohnwu.superuser.Shell
 import kotlin.math.roundToInt
 
-class HideItem(
-    app: HideAppTarget
-) : ObservableItem<HideItem>(), Comparable<HideItem> {
+class HideRvItem(
+    val info: HideAppInfo
+) : ObservableItem<HideRvItem>(), Comparable<HideRvItem> {
 
-    override val layoutRes = R.layout.item_hide_md2
+    override val layoutRes get() = R.layout.item_hide_md2
 
-    val info = app.info
-    val processes = app.processes.map { HideProcessItem(it) }
+    val processes = info.processes.map { HideProcessRvItem(it) }
 
     @get:Bindable
     var isExpanded = false
@@ -39,14 +38,18 @@ class HideItem(
         get() = state
         set(value) = set(value, state, { state = it }, BR.hiddenState) {
             if (value == true) {
-                processes.filterNot { it.isHidden }
+                processes
+                    .filterNot { it.isHidden }
+                    .filter { isExpanded || it.defaultSelection }
             } else {
                 processes
+                    .filter { it.isHidden }
             }.forEach { it.toggle() }
         }
 
     init {
         processes.forEach { it.addOnPropertyChangedCallback(BR.hidden) { recalculateChecked() } }
+        addOnPropertyChangedCallback(BR.expanded) { recalculateChecked() }
         recalculateChecked()
     }
 
@@ -57,17 +60,26 @@ class HideItem(
 
     private fun recalculateChecked() {
         itemsChecked = processes.count { it.isHidden }
-        state = when (itemsChecked) {
-            0 -> false
-            processes.size -> true
-            else -> null
+        state = if (isExpanded) {
+            when (itemsChecked) {
+                0 -> false
+                processes.size -> true
+                else -> null
+            }
+        } else {
+            val defaultProcesses = processes.filter { it.defaultSelection }
+            when (defaultProcesses.count { it.isHidden }) {
+                0 -> false
+                defaultProcesses.size -> true
+                else -> null
+            }
         }
     }
 
-    override fun compareTo(other: HideItem) = comparator.compare(this, other)
+    override fun compareTo(other: HideRvItem) = comparator.compare(this, other)
 
     companion object {
-        private val comparator = compareBy<HideItem>(
+        private val comparator = compareBy<HideRvItem>(
             { it.itemsChecked == 0 },
             { it.info }
         )
@@ -75,25 +87,29 @@ class HideItem(
 
 }
 
-class HideProcessItem(
+class HideProcessRvItem(
     val process: HideProcessInfo
-) : ObservableItem<HideProcessItem>() {
+) : ObservableItem<HideProcessRvItem>() {
 
-    override val layoutRes = R.layout.item_hide_process_md2
+    override val layoutRes get() = R.layout.item_hide_process_md2
 
     @get:Bindable
-    var isHidden = process.isHidden
-        set(value) = set(value, field, { field = it }, BR.hidden) {
-            val arg = if (isHidden) "add" else "rm"
+    var isHidden
+        get() = process.isHidden
+        set(value) = set(value, process.isHidden, { process.isHidden = it }, BR.hidden) {
+            val arg = if (it) "add" else "rm"
             val (name, pkg) = process
-            Shell.su("magiskhide --$arg $pkg $name").submit()
+            Shell.su("magiskhide $arg $pkg $name").submit()
         }
 
     fun toggle() {
         isHidden = !isHidden
     }
 
-    override fun contentSameAs(other: HideProcessItem) = process == other.process
-    override fun itemSameAs(other: HideProcessItem) = process.name == other.process.name
+    val defaultSelection get() =
+        process.isIsolated || process.isAppZygote || process.name == process.packageName
+
+    override fun contentSameAs(other: HideProcessRvItem) = process == other.process
+    override fun itemSameAs(other: HideProcessRvItem) = process.name == other.process.name
 
 }

@@ -7,14 +7,14 @@ import com.topjohnwu.magisk.BR
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.arch.*
 import com.topjohnwu.magisk.core.Config
+import com.topjohnwu.magisk.core.Info
 import com.topjohnwu.magisk.core.download.Subject
-import com.topjohnwu.magisk.core.model.module.Module
+import com.topjohnwu.magisk.core.model.module.LocalModule
 import com.topjohnwu.magisk.core.tasks.RepoUpdater
-import com.topjohnwu.magisk.data.database.RepoByNameDao
-import com.topjohnwu.magisk.data.database.RepoByUpdatedDao
+import com.topjohnwu.magisk.data.database.RepoDao
 import com.topjohnwu.magisk.databinding.RvItem
-import com.topjohnwu.magisk.events.InstallExternalModuleEvent
-import com.topjohnwu.magisk.events.OpenChangelogEvent
+import com.topjohnwu.magisk.events.OpenReadmeEvent
+import com.topjohnwu.magisk.events.SelectModuleEvent
 import com.topjohnwu.magisk.events.SnackbarEvent
 import com.topjohnwu.magisk.events.dialog.ModuleInstallDialog
 import com.topjohnwu.magisk.ktx.addOnListChangedCallback
@@ -43,8 +43,7 @@ import kotlin.math.roundToInt
 * */
 
 class ModuleViewModel(
-    private val repoName: RepoByNameDao,
-    private val repoUpdated: RepoByUpdatedDao,
+    private val repoDB: RepoDao,
     private val repoUpdater: RepoUpdater
 ) : BaseViewModel(), Queryable {
 
@@ -100,11 +99,13 @@ class ModuleViewModel(
 
     val adapter = adapterOf<RvItem>()
     val items = MergeObservableList<RvItem>()
-        .insertItem(InstallModule)
-        .insertList(updatableSectionList)
-        .insertList(itemsUpdatable)
-        .insertList(installSectionList)
-        .insertList(itemsInstalled)
+        .also { if (Info.env.isActive) {
+            it.insertItem(InstallModule)
+              .insertList(updatableSectionList)
+              .insertList(itemsUpdatable)
+              .insertList(installSectionList)
+              .insertList(itemsInstalled)
+        } }
         .insertItem(sectionOnline)
         .insertList(itemsOnline)
     val itemBinding = itemBindingOf<RvItem> {
@@ -114,12 +115,6 @@ class ModuleViewModel(
     // ---
 
     private var refetch = false
-    private val dao
-        get() = when (Config.repoOrder) {
-            Config.Value.ORDER_DATE -> repoUpdated
-            Config.Value.ORDER_NAME -> repoName
-            else -> throw IllegalArgumentException()
-        }
 
     // ---
 
@@ -183,7 +178,7 @@ class ModuleViewModel(
     }
 
     private suspend fun loadInstalled() {
-        val installed = Module.installed().map { ModuleItem(it) }
+        val installed = LocalModule.installed().map { ModuleItem(it) }
         val diff = withContext(Dispatchers.Default) {
             itemsInstalled.calculateDiff(installed)
         }
@@ -194,11 +189,11 @@ class ModuleViewModel(
         val (updates, diff) = withContext(Dispatchers.IO) {
             itemsInstalled.forEach {
                 launch {
-                    it.repo = dao.getRepoById(it.item.id)
+                    it.repo = repoDB.getModule(it.item.id)
                 }
             }
             val updates = itemsInstalled
-                .mapNotNull { dao.getUpdatableRepoById(it.item.id, it.item.versionCode) }
+                .mapNotNull { repoDB.getUpdatableModule(it.item.id, it.item.versionCode) }
                 .map { RepoItem.Update(it) }
             val diff = itemsUpdatable.calculateDiff(updates)
             return@withContext updates to diff
@@ -216,7 +211,7 @@ class ModuleViewModel(
 
         remoteJob = viewModelScope.launch {
             suspend fun loadRemoteDB(offset: Int) = withContext(Dispatchers.IO) {
-                dao.getRepos(offset).map { RepoItem.Remote(it) }
+                repoDB.getModules(offset).map { RepoItem.Remote(it) }
             }
 
             isRemoteLoading = true
@@ -250,7 +245,7 @@ class ModuleViewModel(
             listOf()
         } else {
             withContext(Dispatchers.IO) {
-                dao.searchRepos(query, offset).map { RepoItem.Remote(it) }
+                repoDB.searchModules(query, offset).map { RepoItem.Remote(it) }
             }
         }
     }
@@ -308,20 +303,18 @@ class ModuleViewModel(
     }
 
     fun installPressed() = withExternalRW {
-        InstallExternalModuleEvent().publish()
+        SelectModuleEvent().publish()
     }
 
     fun infoPressed(item: RepoItem) =
-        if (isConnected.get()) OpenChangelogEvent(item.item).publish()
+        if (isConnected.get()) OpenReadmeEvent(item.item).publish()
         else SnackbarEvent(R.string.no_connection).publish()
 
 
     fun infoPressed(item: ModuleItem) {
         item.repo?.also {
-            if (isConnected.get())
-                OpenChangelogEvent(it).publish()
-            else
-                SnackbarEvent(R.string.no_connection).publish()
+            if (isConnected.get()) OpenReadmeEvent(it).publish()
+            else SnackbarEvent(R.string.no_connection).publish()
         } ?: return
     }
 }

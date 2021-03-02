@@ -28,13 +28,14 @@ mount_sbin() {
 
 if [ ! -f /system/build.prop ]; then
   # Running on PC
-  cd "`dirname "$0"`/.."
-  adb push native/out/x86/busybox scripts/emulator.sh /data/local/tmp
-  emu_arch=`adb shell uname -m`
+  cd "$(dirname "$0")/.."
+  tmp="/data/local/tmp"
+  adb push native/out/x86/busybox native/out/x86/magiskinit scripts/emulator.sh $tmp
+  emu_arch=$(adb shell "chmod 777 $tmp/busybox; $tmp/busybox uname -m")
   if [ "$emu_arch" = "x86_64" ]; then
-    adb push native/out/x86/magiskinit64 /data/local/tmp/magiskinit
+    adb push native/out/x86_64/magisk /data/local/tmp
   else
-    adb push native/out/x86/magiskinit /data/local/tmp
+    adb push native/out/x86/magisk /data/local/tmp
   fi
   adb shell sh /data/local/tmp/emulator.sh
   exit 0
@@ -43,7 +44,7 @@ fi
 cd /data/local/tmp
 chmod 777 busybox
 chmod 777 magiskinit
-./magiskinit -x magisk magisk
+chmod 777 magisk
 
 if [ -z "$FIRST_STAGE" ]; then
   export FIRST_STAGE=1
@@ -63,7 +64,8 @@ pgrep magiskd >/dev/null && pkill -9 magiskd
 [ -f /system/bin/magisk ] && umount -l /system/bin
 
 # SELinux stuffs
-[ -e /sys/fs/selinux ] && SELINUX=true || SELINUX=false
+SELINUX=false
+[ -e /sys/fs/selinux ] && SELINUX=true
 if $SELINUX; then
   ln -sf ./magiskinit magiskpolicy
   ./magiskpolicy --live --magisk
@@ -112,7 +114,7 @@ else
 fi
 
 # Magisk stuffs
-./magiskinit -x magisk $BINDIR/magisk
+cp -af ./magisk $BINDIR/magisk
 chmod 755 $BINDIR/magisk
 ln -s ./magisk $BINDIR/su
 ln -s ./magisk $BINDIR/resetprop

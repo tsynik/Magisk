@@ -17,14 +17,12 @@ import com.topjohnwu.magisk.ktx.startAnimations
 abstract class BaseUIFragment<VM : BaseViewModel, Binding : ViewDataBinding> :
     Fragment(), BaseUIComponent<VM> {
 
-    protected val activity get() = requireActivity() as BaseUIActivity<*, *>
+    val activity get() = requireActivity() as BaseUIActivity<*, *>
     protected lateinit var binding: Binding
     protected abstract val layoutRes: Int
 
     override val viewRoot: View get() = binding.root
     private val navigation get() = activity.navigation
-
-    override fun consumeSystemWindowInsets(insets: Insets) = insets
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +39,11 @@ abstract class BaseUIFragment<VM : BaseViewModel, Binding : ViewDataBinding> :
             it.lifecycleOwner = this
         }
         return binding.root
+    }
+
+    override fun onStart() {
+        super.onStart()
+        activity.supportActionBar?.subtitle = null
     }
 
     override fun onEventDispatched(event: ViewEvent) = when(event) {
@@ -65,7 +68,6 @@ abstract class BaseUIFragment<VM : BaseViewModel, Binding : ViewDataBinding> :
                 return true
             }
         })
-        ensureInsets()
     }
 
     override fun onResume() {

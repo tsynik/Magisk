@@ -3,22 +3,27 @@ plugins {
 }
 
 android {
+    val canary = !Config.version.contains(".")
+
     defaultConfig {
         applicationId = "com.topjohnwu.magisk"
         versionCode = 1
-        versionName = Config["appVersion"]
+        versionName = Config.version
+        buildConfigField("int", "STUB_VERSION", Config.stubVersion)
         buildConfigField("String", "DEV_CHANNEL", Config["DEV_CHANNEL"] ?: "null")
+        buildConfigField("boolean", "CANARY", if (canary) "true" else "false")
     }
 
     buildTypes {
         getByName("release") {
             isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            isShrinkResources = false
+            proguardFiles("proguard-rules.pro")
         }
+    }
+
+    aaptOptions {
+        additionalParameters("--package-id", "0x80")
     }
 
     dependenciesInfo {

@@ -14,12 +14,12 @@ buildscript {
         maven { url = uri("https://kotlin.bintray.com/kotlinx") }
     }
 
-    val vNav = "2.3.0"
+    val vNav = "2.3.3"
     extra["vNav"] = vNav
 
     dependencies {
-        classpath("com.android.tools.build:gradle:4.0.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.0")
+        classpath("com.android.tools.build:gradle:4.1.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.30")
         classpath("androidx.navigation:navigation-safe-args-gradle-plugin:${vNav}")
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -27,7 +27,7 @@ buildscript {
     }
 }
 
-tasks.register("clean",Delete::class){
+tasks.register("clean", Delete::class) {
     delete(rootProject.buildDir)
 }
 
@@ -37,7 +37,7 @@ fun Task.applyOptimize() = doLast {
     val aapt2 = Paths.get(project.android.sdkDirectory.path,
         "build-tools", project.android.buildToolsVersion, "aapt2")
     val zip = Paths.get(project.buildDir.path, "intermediates",
-        "processed_res", "release", "out", "resources-release.ap_")
+        "shrunk_processed_res", "release", "resources-release-stripped.ap_")
     val optimized = File("${zip}.opt")
     val cmd = exec {
         commandLine(aapt2, "optimize", "--collapse-resource-names",
@@ -45,6 +45,7 @@ fun Task.applyOptimize() = doLast {
         isIgnoreExitValue = true
     }
     if (cmd.exitValue == 0) {
+        zip.toFile().delete()
         optimized.renameTo(zip.toFile())
     }
 }
@@ -63,11 +64,12 @@ subprojects {
             android.apply {
                 compileSdkVersion(30)
                 buildToolsVersion = "30.0.2"
+                ndkPath = "${System.getenv("ANDROID_SDK_ROOT")}/ndk/magisk"
 
                 defaultConfig {
                     if (minSdkVersion == null)
                         minSdkVersion(17)
-                    targetSdkVersion(28)
+                    targetSdkVersion(30)
                 }
 
                 compileOptions {
@@ -87,8 +89,8 @@ subprojects {
         }
 
         tasks.whenTaskAdded {
-            if (name == "processReleaseResources") {
-                finalizedBy(tasks.create("optimizeReleaseResources").applyOptimize())
+            if (name == "shrinkReleaseRes") {
+                finalizedBy(tasks.create("optimizeReleaseRes").applyOptimize())
             }
         }
 
@@ -108,12 +110,12 @@ subprojects {
                 buildTypes {
                     signingConfigs.getByName("config").also {
                         getByName("debug") {
-                            // If keystore exists, sign the APK with custom signature
-                            if (it.storeFile?.exists() == true)
-                                signingConfig = it
+                            signingConfig = if (it.storeFile?.exists() == true) it
+                            else signingConfigs.getByName("debug")
                         }
                         getByName("release") {
-                            signingConfig = it
+                            signingConfig = if (it.storeFile?.exists() == true) it
+                            else signingConfigs.getByName("debug")
                         }
                     }
                 }

@@ -1,41 +1,41 @@
 package com.topjohnwu.magisk.events.dialog
 
+import android.content.Context
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.core.Info
-import com.topjohnwu.magisk.core.download.Action
 import com.topjohnwu.magisk.core.download.DownloadService
 import com.topjohnwu.magisk.core.download.Subject
-import com.topjohnwu.magisk.ktx.res
+import com.topjohnwu.magisk.data.repository.NetworkService
 import com.topjohnwu.magisk.view.MagiskDialog
-import com.topjohnwu.magisk.view.MarkDownWindow
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import org.koin.core.get
+import org.koin.core.inject
+import java.io.File
 
-class ManagerInstallDialog : DialogEvent() {
+class ManagerInstallDialog : MarkDownDialog() {
+
+    private val svc: NetworkService by inject()
+
+    override suspend fun getMarkdownText(): String {
+        val text = svc.fetchString(Info.remote.magisk.note)
+        // Cache the changelog
+        val context = get<Context>()
+        context.cacheDir.listFiles { _, name -> name.endsWith(".md") }.orEmpty().forEach {
+            it.delete()
+        }
+        File(context.cacheDir, "${Info.remote.magisk.versionCode}.md").writeText(text)
+        return text
+    }
 
     override fun build(dialog: MagiskDialog) {
+        super.build(dialog)
         with(dialog) {
-            val subject = Subject.Manager(Action.APK.Upgrade)
-
-            applyTitle(R.string.repo_install_title.res(R.string.app_name.res()))
-            applyMessage(R.string.repo_install_msg.res(subject.title))
-
             setCancelable(true)
-
             applyButton(MagiskDialog.ButtonType.POSITIVE) {
                 titleRes = R.string.install
-                onClick { DownloadService.start(context, subject) }
+                onClick { DownloadService.start(context, Subject.Manager()) }
             }
-
-            if (Info.remote.app.note.isEmpty()) return
             applyButton(MagiskDialog.ButtonType.NEGATIVE) {
-                titleRes = R.string.app_changelog
-                onClick {
-                    GlobalScope.launch(Dispatchers.Main.immediate) {
-                        MarkDownWindow.show(context, null, Info.remote.app.note)
-                    }
-                }
+                titleRes = android.R.string.cancel
             }
         }
     }

@@ -1,11 +1,9 @@
 package com.topjohnwu.magisk.events.dialog
 
+import android.app.ProgressDialog
 import android.widget.Toast
 import com.topjohnwu.magisk.R
-import com.topjohnwu.magisk.core.Info
-import com.topjohnwu.magisk.core.download.Action
-import com.topjohnwu.magisk.core.download.DownloadService
-import com.topjohnwu.magisk.core.download.Subject
+import com.topjohnwu.magisk.ui.flash.FlashFragment
 import com.topjohnwu.magisk.utils.Utils
 import com.topjohnwu.magisk.view.MagiskDialog
 import com.topjohnwu.superuser.Shell
@@ -17,24 +15,20 @@ class UninstallDialog : DialogEvent() {
             .applyMessage(R.string.uninstall_magisk_msg)
             .applyButton(MagiskDialog.ButtonType.POSITIVE) {
                 titleRes = R.string.restore_img
-                preventDismiss = true
-                onClick { restore(dialog) }
+                onClick { restore() }
             }
-        if (Info.remote.uninstaller.link.isNotEmpty()) {
-            dialog.applyButton(MagiskDialog.ButtonType.NEGATIVE) {
+            .applyButton(MagiskDialog.ButtonType.NEGATIVE) {
                 titleRes = R.string.complete_uninstall
                 onClick { completeUninstall() }
             }
-        }
     }
 
-    private fun restore(dialog: MagiskDialog) {
-        dialog.applyTitle(R.string.restore_img)
-            .applyMessage(R.string.restore_img_msg)
-            .applyButton(MagiskDialog.ButtonType.POSITIVE) {
-                title = ""
-            }
-            .cancellable(false)
+    @Suppress("DEPRECATION")
+    private fun restore() {
+        val dialog = ProgressDialog(dialog.context).apply {
+            setMessage(dialog.context.getString(R.string.restore_img_msg))
+            show()
+        }
 
         Shell.su("restore_imgs").submit { result ->
             dialog.dismiss()
@@ -47,7 +41,7 @@ class UninstallDialog : DialogEvent() {
     }
 
     private fun completeUninstall() {
-        DownloadService.start(dialog.context, Subject.Magisk(Action.Uninstall))
+        FlashFragment.uninstall()
     }
 
 }

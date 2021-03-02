@@ -1,7 +1,10 @@
 package com.topjohnwu.magisk.ui.hide
 
+import android.annotation.SuppressLint
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.MATCH_UNINSTALLED_PACKAGES
+import android.os.Process
 import androidx.databinding.Bindable
 import androidx.lifecycle.viewModelScope
 import com.topjohnwu.magisk.BR
@@ -11,9 +14,8 @@ import com.topjohnwu.magisk.arch.filterableListOf
 import com.topjohnwu.magisk.arch.itemBindingOf
 import com.topjohnwu.magisk.core.Config
 import com.topjohnwu.magisk.ktx.get
-import com.topjohnwu.magisk.ktx.packageInfo
 import com.topjohnwu.magisk.ktx.packageName
-import com.topjohnwu.magisk.ktx.processes
+import com.topjohnwu.magisk.utils.Utils
 import com.topjohnwu.magisk.utils.set
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
@@ -26,37 +28,48 @@ class HideViewModel : BaseViewModel(), Queryable {
 
     @get:Bindable
     var isShowSystem = Config.showSystemApp
-        set(value) = set(value, field, { field = it }, BR.showSystem){
+        set(value) = set(value, field, { field = it }, BR.showSystem) {
             Config.showSystemApp = it
             submitQuery()
         }
 
     @get:Bindable
-    var query = ""
-        set(value) = set(value, field, { field = it }, BR.query){
+    var isShowOS = false
+        set(value) = set(value, field, { field = it }, BR.showOS) {
             submitQuery()
         }
 
-    val items = filterableListOf<HideItem>()
-    val itemBinding = itemBindingOf<HideItem> {
+    @get:Bindable
+    var query = ""
+        set(value) = set(value, field, { field = it }, BR.query) {
+            submitQuery()
+        }
+
+    val items = filterableListOf<HideRvItem>()
+    val itemBinding = itemBindingOf<HideRvItem> {
         it.bindExtra(BR.viewModel, this)
     }
-    val itemInternalBinding = itemBindingOf<HideProcessItem> {
+    val itemInternalBinding = itemBindingOf<HideProcessRvItem> {
         it.bindExtra(BR.viewModel, this)
     }
 
+    @SuppressLint("InlinedApi")
     override fun refresh() = viewModelScope.launch {
+        if (!Utils.showSuperUser()) {
+            state = State.LOADING_FAILED
+            return@launch
+        }
         state = State.LOADING
         val (apps, diff) = withContext(Dispatchers.Default) {
             val pm = get<PackageManager>()
-            val hides = Shell.su("magiskhide --ls").exec().out.map { HideTarget(it) }
-            val apps = pm.getInstalledApplications(0)
+            val hideList = Shell.su("magiskhide ls").exec().out.map { CmdlineHiddenItem(it) }
+            val apps = pm.getInstalledApplications(MATCH_UNINSTALLED_PACKAGES)
                 .asSequence()
-                .filter { it.enabled && !blacklist.contains(it.packageName) }
-                .map { HideAppInfo(it, pm) }
-                .map { createTarget(it, hides) }
+                .filterNot { blacklist.contains(it.packageName) }
+                .map { HideAppInfo(it, pm, hideList) }
                 .filter { it.processes.isNotEmpty() }
-                .map { HideItem(it) }
+                .filter { info -> info.enabled || info.processes.any { it.isHidden } }
+                .map { HideRvItem(it) }
                 .toList()
                 .sorted()
             apps to items.calculateDiff(apps)
@@ -67,24 +80,18 @@ class HideViewModel : BaseViewModel(), Queryable {
 
     // ---
 
-    private fun createTarget(info: HideAppInfo, hideList: List<HideTarget>): HideAppTarget {
-        val pkg = info.packageName
-        val hidden = hideList.filter { it.packageName == pkg }
-        val processNames = info.packageInfo.processes.distinct()
-        val processes = processNames.map { name ->
-            HideProcessInfo(name, pkg, hidden.any { name == it.process })
-        }
-        return HideAppTarget(info, processes)
-    }
-
-    // ---
-
     override fun query() {
         items.filter {
             fun showHidden() = it.itemsChecked != 0
 
-            fun filterSystem() =
-                isShowSystem || it.info.flags and ApplicationInfo.FLAG_SYSTEM == 0
+            fun filterSystem() = isShowSystem || it.info.flags and ApplicationInfo.FLAG_SYSTEM == 0
+
+            fun isApp(uid: Int) = run {
+                val appId: Int = uid % 100000
+                appId >= Process.FIRST_APPLICATION_UID && appId <= Process.LAST_APPLICATION_UID
+            }
+
+            fun filterOS() = (isShowSystem && isShowOS) || isApp(it.info.uid)
 
             fun filterQuery(): Boolean {
                 fun inName() = it.info.label.contains(query, true)
@@ -93,7 +100,7 @@ class HideViewModel : BaseViewModel(), Queryable {
                 return inName() || inPackage() || inProcesses()
             }
 
-            showHidden() || (filterSystem() && filterQuery())
+            showHidden() || (filterSystem() && filterOS() && filterQuery())
         }
         state = State.LOADED
     }
@@ -107,7 +114,6 @@ class HideViewModel : BaseViewModel(), Queryable {
     companion object {
         private val blacklist by lazy { listOf(
             packageName,
-            "android",
             "com.android.chrome",
             "com.chrome.beta",
             "com.chrome.dev",
@@ -117,4 +123,3 @@ class HideViewModel : BaseViewModel(), Queryable {
         ) }
     }
 }
-

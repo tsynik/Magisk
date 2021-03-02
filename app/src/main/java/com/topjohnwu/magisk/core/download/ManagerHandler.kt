@@ -2,23 +2,22 @@ package com.topjohnwu.magisk.core.download
 
 import android.content.Context
 import androidx.core.net.toFile
-import com.topjohnwu.magisk.BuildConfig
 import com.topjohnwu.magisk.DynAPK
 import com.topjohnwu.magisk.R
-import com.topjohnwu.magisk.core.Config
 import com.topjohnwu.magisk.core.Info
-import com.topjohnwu.magisk.core.download.Action.APK.Restore
-import com.topjohnwu.magisk.core.download.Action.APK.Upgrade
 import com.topjohnwu.magisk.core.isRunningAsStub
-import com.topjohnwu.magisk.core.tasks.PatchAPK
+import com.topjohnwu.magisk.core.tasks.HideAPK
+import com.topjohnwu.magisk.core.utils.MediaStoreUtils.outputStream
 import com.topjohnwu.magisk.ktx.relaunchApp
+import com.topjohnwu.magisk.ktx.withStreams
 import com.topjohnwu.magisk.ktx.writeTo
-import com.topjohnwu.superuser.Shell
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 
 private fun Context.patch(apk: File) {
     val patched = File(apk.parent, "patched.apk")
-    PatchAPK.patch(this, apk.path, patched.path, packageName, applicationInfo.nonLocalizedLabel)
+    HideAPK.patch(this, apk, patched, packageName, applicationInfo.nonLocalizedLabel)
     apk.delete()
     patched.renameTo(apk)
 }
@@ -26,47 +25,51 @@ private fun Context.patch(apk: File) {
 private fun BaseDownloader.notifyHide(id: Int) {
     update(id) {
         it.setProgress(0, 0, true)
-            .setContentTitle(getString(R.string.hide_manager_title))
+            .setContentTitle(getString(R.string.hide_app_title))
             .setContentText("")
     }
 }
 
-private suspend fun BaseDownloader.upgrade(subject: Subject.Manager) {
-    val apk = subject.file.toFile()
-    val id = subject.notifyID()
+private class DupOutputStream(
+    private val o1: OutputStream,
+    private val o2: OutputStream
+) : OutputStream() {
+    override fun write(b: Int) {
+        o1.write(b)
+        o2.write(b)
+    }
+    override fun write(b: ByteArray?, off: Int, len: Int) {
+        o1.write(b, off, len)
+        o2.write(b, off, len)
+    }
+    override fun close() {
+        o1.close()
+        o2.close()
+    }
+}
+
+suspend fun BaseDownloader.handleAPK(subject: Subject.Manager, stream: InputStream) {
+    fun write(output: OutputStream) {
+        val ext = subject.externalFile.outputStream()
+        val o = DupOutputStream(ext, output)
+        withStreams(stream, o) { src, out -> src.copyTo(out) }
+    }
+
     if (isRunningAsStub) {
-        // Move to upgrade location
-        apk.copyTo(DynAPK.update(this), overwrite = true)
-        apk.delete()
-        if (Info.stubChk.version < subject.stub.versionCode) {
-            notifyHide(id)
+        val apk = subject.file.toFile()
+        val id = subject.notifyID()
+        write(DynAPK.update(this).outputStream())
+        if (Info.stub!!.version < subject.stub.versionCode) {
             // Also upgrade stub
-            service.fetchFile(subject.stub.link).byteStream().use { it.writeTo(apk) }
+            notifyHide(id)
+            service.fetchFile(subject.stub.link).byteStream().writeTo(apk)
             patch(apk)
         } else {
             // Simply relaunch the app
             stopSelf()
             relaunchApp(this)
         }
-    } else if (packageName != BuildConfig.APPLICATION_ID) {
-        notifyHide(id)
-        patch(apk)
+    } else {
+        write(subject.file.outputStream())
     }
 }
-
-private fun BaseDownloader.restore(apk: File, id: Int) {
-    update(id) {
-        it.setProgress(0, 0, true)
-            .setProgress(0, 0, true)
-            .setContentTitle(getString(R.string.restore_img_msg))
-            .setContentText("")
-    }
-    Config.export()
-    Shell.su("pm install $apk && pm uninstall $packageName").exec()
-}
-
-suspend fun BaseDownloader.handleAPK(subject: Subject.Manager) =
-    when (subject.action) {
-        is Upgrade -> upgrade(subject)
-        is Restore -> restore(subject.file.toFile(), subject.notifyID())
-    }

@@ -6,14 +6,12 @@ import timber.log.Timber
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
-import java.lang.reflect.Field
-import java.lang.reflect.Method
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-fun ZipInputStream.forEach(callback: (ZipEntry) -> Unit) {
+inline fun ZipInputStream.forEach(callback: (ZipEntry) -> Unit) {
     var entry: ZipEntry? = nextEntry
     while (entry != null) {
         callback(entry)
@@ -53,7 +51,7 @@ fun String.langTagToLocale(): Locale {
     if (Build.VERSION.SDK_INT >= 21) {
         return Locale.forLanguageTag(this)
     } else {
-        val tok = split("-".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        val tok = split("[-_]".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         if (tok.isEmpty()) {
             return Locale("")
         }
@@ -110,32 +108,3 @@ fun Locale.toLangTag(): String {
 
 fun SimpleDateFormat.parseOrNull(date: String) =
     runCatching { parse(date) }.onFailure { Timber.e(it) }.getOrNull()
-
-// Reflection hacks
-
-private val loadClass = ClassLoader::class.java.getMethod("loadClass", String::class.java)
-private val getDeclaredMethod = Class::class.java.getMethod("getDeclaredMethod",
-    String::class.java, arrayOf<Class<*>>()::class.java)
-private val getDeclaredField = Class::class.java.getMethod("getDeclaredField", String::class.java)
-
-fun ClassLoader.forceLoadClass(name: String) =
-    runCatching { loadClass.invoke(this, name) }.getOrNull() as Class<*>?
-
-fun Class<*>.forceGetDeclaredMethod(name: String, vararg types: Class<*>) =
-    (runCatching { getDeclaredMethod.invoke(this, name, types) }.getOrNull() as Method?)?.also {
-        it.isAccessible = true
-    }
-
-fun Class<*>.forceGetDeclaredField(name: String) =
-    (runCatching { getDeclaredField.invoke(this, name) }.getOrNull() as Field?)?.also {
-        it.isAccessible = true
-    }
-
-inline fun <reified T> T.forceGetClass(name: String) =
-    T::class.java.classLoader?.forceLoadClass(name)
-
-fun Class<*>.forceGetField(name: String): Field? =
-    forceGetDeclaredField(name) ?: superclass?.forceGetField(name)
-
-fun Class<*>.forceGetMethod(name: String, vararg types: Class<*>): Method? =
-    forceGetDeclaredMethod(name, *types) ?: superclass?.forceGetMethod(name, *types)

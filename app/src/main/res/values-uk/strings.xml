@@ -14,20 +14,15 @@
     <!--Home-->
     <string name="no_connection">Немає з\'єднання</string>
     <string name="app_changelog">Список змін</string>
-    <string name="manager">Manager</string>
     <string name="loading">Завантаження…</string>
     <string name="update">Оновити</string>
     <string name="not_available">Н/Д</string>
     <string name="hide">Сховати</string>
-    <string name="status">Стан</string>
     <string name="home_package">Пакунок</string>
 
-    <string name="home_notice_content">Завжди впевнюйтеся, що користуєтеся офіційним Magisk Manager. Manager з невідомих джерел може виконувати шкідливі дії.</string>
     <string name="home_support_title">Підтримати нас</string>
     <string name="home_item_source">Джерело</string>
     <string name="home_support_content">Magisk є, і завжди буде безкоштовним та з відкритим кодом. Однак, якщо вам не байдуже, можете зробити невеличке пожертвування.</string>
-    <string name="home_status_normal">Нормальний</string>
-    <string name="home_status_stub">Stub</string>
     <string name="home_installed_version">Встановлено</string>
     <string name="home_latest_version">Найновіша</string>
     <string name="invalid_update_channel">Невірний канал оновлення</string>
@@ -44,7 +39,6 @@
     <string name="install_next">Далі</string>
     <string name="install_start">Встановити</string>
     <string name="manager_download_install">Натисніть, щоб завантажити і встановити</string>
-    <string name="download_zip_only">Тільки завантажити</string>
     <string name="direct_install">Пряме встановлення (рекомендовано)</string>
     <string name="install_inactive_slot">Встановити в неактивний слот (після OTA)</string>
     <string name="install_inactive_slot_msg">Ваш пристрій буде примусово перезавантажено в неактивний слот!\nВикористовуйте цю опцію тільки для встановлення OTA.\nПродовжити?</string>
@@ -56,6 +50,7 @@
 
     <!--Superuser-->
     <string name="su_request_title">Запит прав суперкористувача</string>
+    <string name="touch_filtered_warning">Magisk не може перевірити вашу відповідь, тому що застосунок заступає вікно запиту прав суперкористувача</string>
     <string name="deny">Відмовити</string>
     <string name="prompt">Запитувати</string>
     <string name="grant">Надати</string>
@@ -102,6 +97,7 @@
 
     <!-- MagiskHide -->
     <string name="show_system_app">Показувати системні застосунки</string>
+    <string name="show_os_app">Показувати вбудовані застосунки</string>
     <string name="hide_filter_hint">Фільтрувати за назвою</string>
     <string name="hide_scroll_up">Прогорнути вгору</string>
     <string name="hide_filters">Фільтри</string>
@@ -109,6 +105,7 @@
 
     <!--Module Fragment-->
     <string name="no_info_provided">(немає наданої інформації)</string>
+    <string name="reboot_userspace">Швидке перезавантаження</string>
     <string name="reboot_recovery">Перезавантажити в Recovery</string>
     <string name="reboot_bootloader">Перезавантажити в Bootloader</string>
     <string name="reboot_download">Перезавантажити в Download</string>
@@ -121,6 +118,7 @@
     <string name="module_action_install_external">Встановити зі сховища</string>
     <string name="update_available">Доступне оновлення</string>
     <string name="module_installed">@string/home_installed_version</string>
+    <string name="module_section_online">Онлайн</string>
     <string name="sorting_order">Порядок сортування</string>
 
     <!--Settings -->
@@ -133,10 +131,6 @@
     <string name="settings_download_path_message">Файли зберігатимуться в %1$s</string>
     <string name="settings_clear_cache_title">Очистити кеш</string>
     <string name="settings_clear_cache_summary">Очистити збережену інформацію про мережеві репозиторії. Кеш заново завантажиться через Інтернет</string>
-    <string name="settings_hide_manager_title">Сховати Magisk Manager</string>
-    <string name="settings_hide_manager_summary">Перезібрати Magisk Manager з випадковими іменами застосунку та пакунку</string>
-    <string name="settings_restore_manager_title">Відновити Magisk Manager</string>
-    <string name="settings_restore_manager_summary">Відновити Magisk Manager до оригінального імені пакунку та застосунку</string>
     <string name="language">Мова</string>
     <string name="system_default">(системна)</string>
     <string name="settings_check_update_title">Перевіряти оновлення</string>
@@ -169,10 +163,15 @@
     <string name="superuser_notification">Сповіщення суперкористувача</string>
     <string name="settings_su_reauth_title">Повторна автентифікація</string>
     <string name="settings_su_reauth_summary">Перевидача прав суперкористувача після оновлення програ</string>
+    <string name="settings_su_tapjack_title">Увімкнути захист від Tapjack</string>
+    <string name="settings_su_tapjack_summary">Діалогове вікно суперкористувача не буде отримувати ввід від користувача, коли вікно перекрито іншим застосунком чи вікном</string>
     <string name="settings_su_biometric_title">Біометрична автентифікація</string>
     <string name="settings_su_biometric_summary">Використовувати біометричну автентифікацію, щоб підтверджувати запити суперкористувача</string>
     <string name="no_biometric">Пристрій не підтримується, або не налаштовано біометрику</string>
     <string name="settings_customization">Оформлення</string>
+    <string name="setting_add_shortcut_summary">Додати ярлик на домашній екран для зручного сприйняття застосунку після його приховування</string>
+    <string name="settings_doh_title">DNS поверх HTTPS</string>
+    <string name="settings_doh_description">Відключити DoH (при нестабільному підключенні)</string>
 
     <string name="multiuser_mode">Багатокористувацький режим</string>
     <string name="settings_owner_only">Тільки власник</string>
@@ -195,10 +194,7 @@
     <string name="progress_channel">Сповіщення прогресу</string>
     <string name="download_complete">Завантаження завершено</string>
     <string name="download_file_error">Помилка завантаження файлу</string>
-    <string name="download_open_parent">Показати в батьківській папці</string>
-    <string name="download_open_self">Показати файл</string>
     <string name="magisk_update_title">Доступне оновлення Magisk!</string>
-    <string name="manager_update_title">Доступне оновлення Magisk Manager!</string>
 
     <!--Toasts, Dialogs-->
     <string name="yes">Так</string>
@@ -212,8 +208,6 @@
     <string name="flashing">Прошивання…</string>
     <string name="done">Готово!</string>
     <string name="failure">Не вдалося</string>
-    <string name="hide_manager_title">Приховування Magisk Manager…</string>
-    <string name="hide_manager_fail_toast">Не вдалося приховати Magisk Manager.</string>
     <string name="open_link_failed_toast">Не знайдено застосунку для відкриття посилання</string>
     <string name="complete_uninstall">Повне видалення</string>
     <string name="restore_img">Відновити розділи</string>
@@ -221,14 +215,13 @@
     <string name="restore_done">Відновлення завершено!</string>
     <string name="restore_fail">Немає оригінальної резервної копії!</string>
     <string name="proprietary_title">Завантажити пропрієтарний код</string>
-    <string name="proprietary_notice">Magisk Manager — це безкоштовний застосунок з відкритим вихідним кодом, тому він не містить пропрієтарний код API SafetyNet від компанії Google.\n\nДозволити Magisk Manager завантажити розширення (яке містить GoogleApiClient) для перевірки SafetyNet?</string>
     <string name="setup_fail">Не вдалося налаштувати</string>
     <string name="env_fix_title">Потрібне додаткове налаштування</string>
-    <string name="env_fix_msg">Для правильної роботи Magisk на вашому пристрої, потрібне додаткове налаштування. Буде завантажено zip-архів. Розпочати негайно?</string>
     <string name="setup_msg">Налаштування робочого середовища…</string>
     <string name="authenticate">Автентифікувати</string>
     <string name="unsupport_magisk_title">Версія Magisk не підтримується</string>
-    <string name="unsupport_magisk_msg">Ця версія Magisk Manager не підтримує версію Magisk нижчу, ніж %1$s.\n\nЗастосунок буде працювати, ніби Magisk не встановлено. Будь ласка, оновіть Magisk якомога швидше.</string>
     <string name="external_rw_permission_denied">Надайте доступ до сховища, щоб увімкнути цей функціонал</string>
+    <string name="add_shortcut_title">Ярлик на домашньому екрані</string>
+    <string name="app_not_found">Не знайдено застосунку, який повинен опрацювати цю дію</string>
 
 </resources>
