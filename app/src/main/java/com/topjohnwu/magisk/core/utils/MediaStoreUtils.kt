@@ -1,10 +1,7 @@
 package com.topjohnwu.magisk.core.utils
 
-import android.annotation.SuppressLint
-import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
-import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -14,7 +11,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.net.toFile
 import androidx.core.net.toUri
 import com.topjohnwu.magisk.core.Config
-import com.topjohnwu.magisk.ktx.get
+import com.topjohnwu.magisk.di.AppContext
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -25,7 +22,7 @@ import kotlin.experimental.and
 @Suppress("DEPRECATION")
 object MediaStoreUtils {
 
-    private val cr: ContentResolver by lazy { get<Context>().contentResolver }
+    private val cr get() = AppContext.contentResolver
 
     @get:RequiresApi(api = 29)
     private val tableUri
@@ -40,15 +37,17 @@ object MediaStoreUtils {
 
     private val relativePath get() = relativePath(Config.downloadDir)
 
-    @RequiresApi(api = 29)
+    @RequiresApi(api = 30)
     @Throws(IOException::class)
     private fun insertFile(displayName: String): MediaStoreFile {
         val values = ContentValues()
         values.put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
 
-        // before Android 11, MediaStore can not rename new file when file exists,
-        // insert will return null. use newFile() instead.
+        // When a file with the same name exists and was not created by us:
+        // - Before Android 11, insert will return null
+        // - On Android 11+, the system will automatically create a new name
+        // Thus the reason to restrict this method call to API 30+
         val fileUri = cr.insert(tableUri, values) ?: throw IOException("Can't insert $displayName.")
 
         val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATA)
@@ -65,14 +64,8 @@ object MediaStoreUtils {
         throw IOException("Can't insert $displayName.")
     }
 
+    @RequiresApi(api = 29)
     private fun queryFile(displayName: String): UriFile? {
-        if (Build.VERSION.SDK_INT < 29) {
-            // Before official general purpose MediaStore API exists, fallback to file based I/O
-            val parent = File(Environment.getExternalStorageDirectory(), relativePath)
-            parent.mkdirs()
-            return LegacyUriFile(File(parent, displayName))
-        }
-
         val projection = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATA)
         // Before Android 10, we wrote the DISPLAY_NAME field when insert, so it can be used.
         val selection = "${MediaStore.MediaColumns.DISPLAY_NAME} == ?"
@@ -92,16 +85,22 @@ object MediaStoreUtils {
         return null
     }
 
-    @SuppressLint("NewApi")
     @Throws(IOException::class)
-    fun getFile(displayName: String): UriFile {
-        return queryFile(displayName) ?:
-        /* this code path will never happen pre 29 */ insertFile(displayName)
+    fun getFile(displayName: String, skipQuery: Boolean = false): UriFile {
+        if (Build.VERSION.SDK_INT < 30) {
+            // Fallback to file based I/O pre Android 11
+            val parent = File(Environment.getExternalStorageDirectory(), relativePath)
+            parent.mkdirs()
+            return LegacyUriFile(File(parent, displayName))
+        }
+
+        return if (skipQuery) insertFile(displayName)
+        else queryFile(displayName) ?: insertFile(displayName)
     }
 
     fun Uri.inputStream() = cr.openInputStream(this) ?: throw FileNotFoundException()
 
-    fun Uri.outputStream() = cr.openOutputStream(this) ?: throw FileNotFoundException()
+    fun Uri.outputStream() = cr.openOutputStream(this, "rwt") ?: throw FileNotFoundException()
 
     val Uri.displayName: String get() {
         if (scheme == "file") {

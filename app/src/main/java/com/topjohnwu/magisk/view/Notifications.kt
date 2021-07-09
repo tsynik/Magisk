@@ -3,28 +3,23 @@ package com.topjohnwu.magisk.view
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.os.Build.VERSION.SDK_INT
-import androidx.core.app.TaskStackBuilder
 import androidx.core.content.getSystemService
 import androidx.core.graphics.drawable.toIcon
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.core.Const
 import com.topjohnwu.magisk.core.Const.ID.PROGRESS_NOTIFICATION_CHANNEL
 import com.topjohnwu.magisk.core.Const.ID.UPDATE_NOTIFICATION_CHANNEL
-import com.topjohnwu.magisk.core.SplashActivity
-import com.topjohnwu.magisk.core.cmp
-import com.topjohnwu.magisk.core.download.Action
 import com.topjohnwu.magisk.core.download.DownloadService
 import com.topjohnwu.magisk.core.download.Subject
-import com.topjohnwu.magisk.core.intent
-import com.topjohnwu.magisk.ktx.get
+import com.topjohnwu.magisk.di.AppContext
 import com.topjohnwu.magisk.ktx.getBitmap
 
+@Suppress("DEPRECATION")
 object Notifications {
 
-    val mgr by lazy { get<Context>().getSystemService<NotificationManager>()!! }
+    val mgr by lazy { AppContext.getSystemService<NotificationManager>()!! }
 
     fun setup(context: Context) {
         if (SDK_INT >= 26) {
@@ -46,34 +41,15 @@ object Notifications {
                 setChannelId(UPDATE_NOTIFICATION_CHANNEL)
             } else {
                 setSmallIcon(R.drawable.ic_magisk_outline)
-                setVibrate(longArrayOf(0, 100, 100, 100))
             }
         }
     }
 
-    fun magiskUpdate(context: Context) {
-        val intent = context.intent<SplashActivity>()
-                .putExtra(Const.Key.OPEN_SECTION, "magisk")
-        val stackBuilder = TaskStackBuilder.create(context)
-        stackBuilder.addParentStack(SplashActivity::class.java.cmp(context.packageName))
-        stackBuilder.addNextIntent(intent)
-        val pendingIntent = stackBuilder.getPendingIntent(
-            Const.ID.MAGISK_UPDATE_NOTIFICATION_ID, PendingIntent.FLAG_UPDATE_CURRENT)
+    fun managerUpdate(context: Context) {
+        val intent = DownloadService.pendingIntent(context, Subject.Manager())
 
         val builder = updateBuilder(context)
             .setContentTitle(context.getString(R.string.magisk_update_title))
-            .setContentText(context.getString(R.string.manager_download_install))
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-
-        mgr.notify(Const.ID.MAGISK_UPDATE_NOTIFICATION_ID, builder.build())
-    }
-
-    fun managerUpdate(context: Context) {
-        val intent = DownloadService.pendingIntent(context, Subject.Manager(Action.APK.Upgrade))
-
-        val builder = updateBuilder(context)
-            .setContentTitle(context.getString(R.string.manager_update_title))
             .setContentText(context.getString(R.string.manager_download_install))
             .setAutoCancel(true)
             .setContentIntent(intent)

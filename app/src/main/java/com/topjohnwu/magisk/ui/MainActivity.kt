@@ -1,7 +1,7 @@
 package com.topjohnwu.magisk.ui
 
 import android.content.Intent
-import android.os.Build
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -10,10 +10,7 @@ import android.view.WindowManager
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.view.forEach
-import androidx.core.view.setPadding
-import androidx.core.view.updateLayoutParams
 import androidx.navigation.NavDirections
-import com.google.android.material.card.MaterialCardView
 import com.topjohnwu.magisk.MainDirections
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.arch.BaseUIActivity
@@ -21,15 +18,14 @@ import com.topjohnwu.magisk.arch.BaseViewModel
 import com.topjohnwu.magisk.arch.ReselectionTarget
 import com.topjohnwu.magisk.core.*
 import com.topjohnwu.magisk.databinding.ActivityMainMd2Binding
+import com.topjohnwu.magisk.di.viewModel
 import com.topjohnwu.magisk.ktx.startAnimations
 import com.topjohnwu.magisk.ui.home.HomeFragmentDirections
-import com.topjohnwu.magisk.utils.HideBottomViewOnScrollBehavior
-import com.topjohnwu.magisk.utils.HideTopViewOnScrollBehavior
 import com.topjohnwu.magisk.utils.HideableBehavior
+import com.topjohnwu.magisk.utils.Utils
 import com.topjohnwu.magisk.view.MagiskDialog
 import com.topjohnwu.magisk.view.Shortcuts
-import com.topjohnwu.superuser.Shell
-import org.koin.androidx.viewmodel.ext.android.viewModel
+import java.io.File
 
 class MainViewModel : BaseViewModel()
 
@@ -37,15 +33,7 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
 
     override val layoutRes = R.layout.activity_main_md2
     override val viewModel by viewModel<MainViewModel>()
-    override val navHost: Int = R.id.main_nav_host
-
-    //This temporarily fixes unwanted feature of BottomNavigationView - where the view applies
-    //padding on itself given insets are not consumed beforehand. Unfortunately the listener
-    //implementation doesn't favor us against the design library, so on re-create it's often given
-    //upper hand.
-    private val navObserver = ViewTreeObserver.OnGlobalLayoutListener {
-        binding.mainNavigation.setPadding(0)
-    }
+    override val navHostId: Int = R.id.main_nav_host
 
     private var isRootFragment = true
 
@@ -86,12 +74,6 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
 
         setSupportActionBar(binding.mainToolbar)
 
-        binding.mainToolbarWrapper.updateLayoutParams<CoordinatorLayout.LayoutParams> {
-            behavior = HideTopViewOnScrollBehavior<MaterialCardView>()
-        }
-        binding.mainBottomBar.updateLayoutParams<CoordinatorLayout.LayoutParams> {
-            behavior = HideBottomViewOnScrollBehavior<MaterialCardView>()
-        }
         binding.mainNavigation.setOnNavigationItemSelectedListener {
             getScreen(it.itemId)?.navigate()
             true
@@ -100,9 +82,7 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
             (currentFragment as? ReselectionTarget)?.onReselected()
         }
 
-        binding.mainNavigation.viewTreeObserver.addOnGlobalLayoutListener(navObserver)
-
-        val section = if (intent.action == ACTION_APPLICATION_PREFERENCES) Const.Nav.SETTINGS
+        val section = if (intent.action == Intent.ACTION_APPLICATION_PREFERENCES) Const.Nav.SETTINGS
         else intent.getStringExtra(Const.Key.OPEN_SECTION)
         getScreen(section)?.navigate()
 
@@ -116,15 +96,9 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
     override fun onResume() {
         super.onResume()
         binding.mainNavigation.menu.apply {
-            val isRoot = Shell.rootAccess()
-            findItem(R.id.modulesFragment)?.isEnabled = isRoot
-            findItem(R.id.superuserFragment)?.isEnabled = isRoot
+            findItem(R.id.superuserFragment)?.isEnabled = Utils.showSuperUser()
+            findItem(R.id.logFragment)?.isEnabled = Info.env.isActive
         }
-    }
-
-    override fun onDestroy() {
-        binding.mainNavigation.viewTreeObserver.removeOnGlobalLayoutListener(navObserver)
-        super.onDestroy()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -148,6 +122,29 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
         val topView = binding.mainToolbarWrapper
         val bottomView = binding.mainBottomBar
 
+        if (!binding.mainBottomBar.isAttachedToWindow) {
+            binding.mainBottomBar.viewTreeObserver.addOnWindowAttachListener(object :
+                ViewTreeObserver.OnWindowAttachListener {
+
+                init {
+                    val listener =
+                        binding.mainBottomBar.tag as? ViewTreeObserver.OnWindowAttachListener
+                    if (listener != null) {
+                        binding.mainBottomBar.viewTreeObserver.removeOnWindowAttachListener(listener)
+                    }
+                    binding.mainBottomBar.tag = this
+                }
+
+                override fun onWindowAttached() {
+                    requestNavigationHidden(hide)
+                }
+
+                override fun onWindowDetached() {
+                }
+            })
+            return
+        }
+
         val topParams = topView.layoutParams as? CoordinatorLayout.LayoutParams
         val bottomParams = bottomView.layoutParams as? CoordinatorLayout.LayoutParams
 
@@ -165,9 +162,9 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
 
     private fun getScreen(name: String?): NavDirections? {
         return when (name) {
-            Const.Nav.SUPERUSER -> HomeFragmentDirections.actionSuperuserFragment()
-            Const.Nav.HIDE -> HomeFragmentDirections.actionHideFragment()
-            Const.Nav.MODULES -> HomeFragmentDirections.actionModuleFragment()
+            Const.Nav.SUPERUSER -> MainDirections.actionSuperuserFragment()
+            Const.Nav.HIDE -> MainDirections.actionHideFragment()
+            Const.Nav.MODULES -> MainDirections.actionModuleFragment()
             Const.Nav.SETTINGS -> HomeFragmentDirections.actionHomeFragmentToSettingsFragment()
             else -> null
         }
@@ -189,7 +186,37 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
                 .applyTitle(R.string.unsupport_magisk_title)
                 .applyMessage(R.string.unsupport_magisk_msg, Const.Version.MIN_VERSION)
                 .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
-                .cancellable(true)
+                .cancellable(false)
+                .reveal()
+        }
+
+        if (!Info.isEmulator && Info.env.isActive && System.getenv("PATH")
+                ?.split(':')
+                ?.filterNot { File("$it/magisk").exists() }
+                ?.any { File("$it/su").exists() } == true) {
+            MagiskDialog(this)
+                .applyTitle(R.string.unsupport_general_title)
+                .applyMessage(R.string.unsupport_other_su_msg)
+                .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
+                .cancellable(false)
+                .reveal()
+        }
+
+        if (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0) {
+            MagiskDialog(this)
+                .applyTitle(R.string.unsupport_general_title)
+                .applyMessage(R.string.unsupport_system_app_msg)
+                .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
+                .cancellable(false)
+                .reveal()
+        }
+
+        if (applicationInfo.flags and ApplicationInfo.FLAG_EXTERNAL_STORAGE != 0) {
+            MagiskDialog(this)
+                .applyTitle(R.string.unsupport_general_title)
+                .applyMessage(R.string.unsupport_external_storage_msg)
+                .applyButton(MagiskDialog.ButtonType.POSITIVE) { titleRes = android.R.string.ok }
+                .cancellable(false)
                 .reveal()
         }
     }
@@ -213,11 +240,4 @@ open class MainActivity : BaseUIActivity<MainViewModel, ActivityMainMd2Binding>(
                 .reveal()
         }
     }
-
-    companion object {
-        private val ACTION_APPLICATION_PREFERENCES get() =
-            if (Build.VERSION.SDK_INT >= 24) Intent.ACTION_APPLICATION_PREFERENCES
-            else "???"
-    }
-
 }

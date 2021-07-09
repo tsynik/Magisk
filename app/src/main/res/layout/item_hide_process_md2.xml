@@ -7,7 +7,7 @@
 
         <variable
             name="item"
-            type="com.topjohnwu.magisk.model.entity.recycler.HideProcessRvItem" />
+            type="com.topjohnwu.magisk.ui.hide.HideProcessRvItem" />
 
         <variable
             name="viewModel"
@@ -26,10 +26,9 @@
             android:layout_marginEnd="@dimen/margin_generic"
             android:ellipsize="marquee"
             android:singleLine="true"
-            android:text="@{item.process}"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:textColor="@android:color/tertiary_text_dark"
-            android:textIsSelectable="false"
+            android:ellipsize="middle"
+            android:text="@{item.displayName}"
+            android:textAppearance="@style/AppearanceFoundation.Caption.Variant"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/hide_process_icon"
             app:layout_constraintStart_toStartOf="parent"

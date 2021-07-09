@@ -4,14 +4,14 @@
 #####################################################################
 #
 # This script will setup an environment with minimal Magisk that
-# Magisk Manager will be happy to run properly within the official
+# the Magisk app will be happy to run properly within the official
 # emulator bundled with Android Studio (AVD).
 #
-# ONLY use this script for developing Magisk Manager or root apps
+# ONLY use this script for developing the Magisk app or root apps
 # in the emulator. The constructed Magisk environment is not a
 # fully functional one as if it is running on an actual device.
 #
-# The script assumes you are using x86/x64 emulator images.
+# The script assumes you are using x64 emulator images.
 # Build binaries with `./build.py binary` before running this script.
 #
 #####################################################################
@@ -28,14 +28,9 @@ mount_sbin() {
 
 if [ ! -f /system/build.prop ]; then
   # Running on PC
-  cd "`dirname "$0"`/.."
-  adb push native/out/x86/busybox scripts/emulator.sh /data/local/tmp
-  emu_arch=`adb shell uname -m`
-  if [ "$emu_arch" = "x86_64" ]; then
-    adb push native/out/x86/magiskinit64 /data/local/tmp/magiskinit
-  else
-    adb push native/out/x86/magiskinit /data/local/tmp
-  fi
+  cd "$(dirname "$0")/.."
+  adb push native/out/x86_64/busybox native/out/x86_64/magiskinit \
+  native/out/x86_64/magisk scripts/emulator.sh /data/local/tmp
   adb shell sh /data/local/tmp/emulator.sh
   exit 0
 fi
@@ -43,7 +38,7 @@ fi
 cd /data/local/tmp
 chmod 777 busybox
 chmod 777 magiskinit
-./magiskinit -x magisk magisk
+chmod 777 magisk
 
 if [ -z "$FIRST_STAGE" ]; then
   export FIRST_STAGE=1
@@ -63,7 +58,8 @@ pgrep magiskd >/dev/null && pkill -9 magiskd
 [ -f /system/bin/magisk ] && umount -l /system/bin
 
 # SELinux stuffs
-[ -e /sys/fs/selinux ] && SELINUX=true || SELINUX=false
+SELINUX=false
+[ -e /sys/fs/selinux ] && SELINUX=true
 if $SELINUX; then
   ln -sf ./magiskinit magiskpolicy
   ./magiskpolicy --live --magisk
@@ -87,7 +83,7 @@ elif [ -e /sbin ]; then
   mount_sbin
   if ! grep -q '/sbin/.magisk/mirror/system_root' /proc/mounts; then
     mkdir -p /sbin/.magisk/mirror/system_root
-    block=`mount | grep ' / ' | awk '{ print $1 }'`
+    block=$(mount | grep ' / ' | awk '{ print $1 }')
     [ $block = "/dev/root" ] && block=/dev/block/dm-0
     mount -o ro $block /sbin/.magisk/mirror/system_root
   fi
@@ -96,7 +92,7 @@ elif [ -e /sbin ]; then
     if [ -L $file ]; then
       cp -af $file /sbin
     else
-      sfile=/sbin/`basename $file`
+      sfile=/sbin/$(basename $file)
       touch $sfile
       mount -o bind $file $sfile
     fi
@@ -112,7 +108,7 @@ else
 fi
 
 # Magisk stuffs
-./magiskinit -x magisk $BINDIR/magisk
+cp -af ./magisk $BINDIR/magisk
 chmod 755 $BINDIR/magisk
 ln -s ./magisk $BINDIR/su
 ln -s ./magisk $BINDIR/resetprop

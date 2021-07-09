@@ -1,21 +1,19 @@
 package com.topjohnwu.magisk.core.download
 
-import android.content.Context
 import android.net.Uri
 import android.os.Parcelable
 import androidx.core.net.toUri
 import com.topjohnwu.magisk.core.Info
 import com.topjohnwu.magisk.core.model.MagiskJson
-import com.topjohnwu.magisk.core.model.ManagerJson
 import com.topjohnwu.magisk.core.model.StubJson
-import com.topjohnwu.magisk.core.model.module.Repo
+import com.topjohnwu.magisk.core.model.module.OnlineModule
 import com.topjohnwu.magisk.core.utils.MediaStoreUtils
+import com.topjohnwu.magisk.di.AppContext
 import com.topjohnwu.magisk.ktx.cachedFile
-import com.topjohnwu.magisk.ktx.get
-import kotlinx.android.parcel.IgnoredOnParcel
-import kotlinx.android.parcel.Parcelize
+import kotlinx.parcelize.IgnoredOnParcel
+import kotlinx.parcelize.Parcelize
 
-private fun cachedFile(name: String) = get<Context>().cachedFile(name).apply { delete() }.toUri()
+private fun cachedFile(name: String) = AppContext.cachedFile(name).apply { delete() }.toUri()
 
 sealed class Subject : Parcelable {
 
@@ -26,10 +24,10 @@ sealed class Subject : Parcelable {
 
     @Parcelize
     class Module(
-        val module: Repo,
+        val module: OnlineModule,
         override val action: Action
     ) : Subject() {
-        override val url: String get() = module.zipUrl
+        override val url: String get() = module.zip_url
         override val title: String get() = module.downloadFilename
 
         @IgnoredOnParcel
@@ -40,75 +38,26 @@ sealed class Subject : Parcelable {
 
     @Parcelize
     class Manager(
-        override val action: Action.APK,
-        private val app: ManagerJson = Info.remote.app,
+        private val json: MagiskJson = Info.remote.magisk,
         val stub: StubJson = Info.remote.stub
     ) : Subject() {
-
-        override val title: String
-            get() = "MagiskManager-${app.version}(${app.versionCode})"
-
-        override val url: String
-            get() = app.link
+        override val action get() = Action.Download
+        override val title: String get() = "Magisk-${json.version}(${json.versionCode})"
+        override val url: String get() = json.link
 
         @IgnoredOnParcel
         override val file by lazy {
             cachedFile("manager.apk")
         }
 
+        val externalFile get() = MediaStoreUtils.getFile("$title.apk").uri
     }
+}
 
-    abstract class Magisk : Subject() {
+sealed class Action : Parcelable {
+    @Parcelize
+    object Flash : Action()
 
-        val magisk: MagiskJson = Info.remote.magisk
-
-        @Parcelize
-        private class Internal(
-            override val action: Action
-        ) : Magisk() {
-            override val url: String get() = magisk.link
-            override val title: String get() = "Magisk-${magisk.version}(${magisk.versionCode})"
-
-            @IgnoredOnParcel
-            override val file by lazy {
-                cachedFile("magisk.zip")
-            }
-        }
-
-        @Parcelize
-        private class Uninstall : Magisk() {
-            override val action get() = Action.Uninstall
-            override val url: String get() = Info.remote.uninstaller.link
-            override val title: String get() = "uninstall.zip"
-
-            @IgnoredOnParcel
-            override val file by lazy {
-                cachedFile(title)
-            }
-
-        }
-
-        @Parcelize
-        private class Download : Magisk() {
-            override val action get() = Action.Download
-            override val url: String get() = magisk.link
-            override val title: String get() = "Magisk-${magisk.version}(${magisk.versionCode}).zip"
-
-            @IgnoredOnParcel
-            override val file by lazy {
-                MediaStoreUtils.getFile(title).uri
-            }
-        }
-
-        companion object {
-            operator fun invoke(config: Action) = when (config) {
-                Action.Download -> Download()
-                Action.Uninstall -> Uninstall()
-                Action.EnvFix, is Action.Flash, is Action.Patch -> Internal(config)
-                else -> throw IllegalArgumentException()
-            }
-        }
-
-    }
-
+    @Parcelize
+    object Download : Action()
 }

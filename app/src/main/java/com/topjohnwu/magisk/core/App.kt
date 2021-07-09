@@ -1,25 +1,21 @@
 package com.topjohnwu.magisk.core
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.multidex.MultiDex
 import androidx.work.WorkManager
-import com.topjohnwu.magisk.BuildConfig
 import com.topjohnwu.magisk.DynAPK
-import com.topjohnwu.magisk.FileProvider
-import com.topjohnwu.magisk.core.su.SuCallbackHandler
+import com.topjohnwu.magisk.core.utils.AppShellInit
+import com.topjohnwu.magisk.core.utils.BusyBoxInit
 import com.topjohnwu.magisk.core.utils.IODispatcherExecutor
-import com.topjohnwu.magisk.core.utils.RootInit
 import com.topjohnwu.magisk.core.utils.updateConfig
-import com.topjohnwu.magisk.di.koinModules
+import com.topjohnwu.magisk.di.ServiceLocator
 import com.topjohnwu.magisk.ktx.unwrap
 import com.topjohnwu.superuser.Shell
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.startKoin
 import timber.log.Timber
 import kotlin.system.exitProcess
 
@@ -33,10 +29,9 @@ open class App() : Application() {
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
         Shell.setDefaultBuilder(Shell.Builder.create()
             .setFlags(Shell.FLAG_MOUNT_MASTER)
-            .setInitializers(RootInit::class.java)
+            .setInitializers(BusyBoxInit::class.java, AppShellInit::class.java)
             .setTimeout(2))
         Shell.EXECUTOR = IODispatcherExecutor()
-        FileProvider.callHandler = SuCallbackHandler
 
         // Always log full stack trace with Timber
         Timber.plant(Timber.DebugTree())
@@ -47,10 +42,6 @@ open class App() : Application() {
     }
 
     override fun attachBaseContext(base: Context) {
-        // Basic setup
-        if (BuildConfig.DEBUG)
-            MultiDex.install(base)
-
         // Some context magic
         val app: Application
         val impl: Context
@@ -64,12 +55,8 @@ open class App() : Application() {
         val wrapped = impl.wrap()
         super.attachBaseContext(wrapped)
 
-        // Normal startup
-        startKoin {
-            androidContext(wrapped)
-            modules(koinModules)
-        }
-        ResMgr.init(impl)
+        ServiceLocator.context = wrapped
+        AssetHack.init(impl)
         app.registerActivityLifecycleCallbacks(ForegroundTracker)
         WorkManager.initialize(impl.wrapJob(), androidx.work.Configuration.Builder().build())
     }
@@ -86,6 +73,7 @@ open class App() : Application() {
     }
 }
 
+@SuppressLint("StaticFieldLeak")
 object ForegroundTracker : Application.ActivityLifecycleCallbacks {
 
     @Volatile

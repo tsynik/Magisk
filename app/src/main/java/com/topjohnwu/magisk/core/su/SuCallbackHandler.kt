@@ -7,16 +7,13 @@ import android.os.Bundle
 import android.os.Process
 import android.widget.Toast
 import com.topjohnwu.magisk.BuildConfig
-import com.topjohnwu.magisk.ProviderCallHandler
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.core.Config
 import com.topjohnwu.magisk.core.intent
 import com.topjohnwu.magisk.core.model.su.SuPolicy
 import com.topjohnwu.magisk.core.model.su.toLog
 import com.topjohnwu.magisk.core.model.su.toPolicy
-import com.topjohnwu.magisk.core.wrap
-import com.topjohnwu.magisk.data.repository.LogRepository
-import com.topjohnwu.magisk.ktx.get
+import com.topjohnwu.magisk.di.ServiceLocator
 import com.topjohnwu.magisk.ktx.startActivity
 import com.topjohnwu.magisk.ktx.startActivityWithRoot
 import com.topjohnwu.magisk.ui.surequest.SuRequestActivity
@@ -26,17 +23,12 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-object SuCallbackHandler : ProviderCallHandler {
+object SuCallbackHandler {
 
     const val REQUEST = "request"
     const val LOG = "log"
     const val NOTIFY = "notify"
     const val TEST = "test"
-
-    override fun call(context: Context, method: String, arg: String?, extras: Bundle?): Bundle? {
-        invoke(context.wrap(), method, extras)
-        return Bundle.EMPTY
-    }
 
     operator fun invoke(context: Context, action: String?, data: Bundle?) {
         data ?: return
@@ -111,9 +103,8 @@ object SuCallbackHandler : ProviderCallHandler {
             command = command
         )
 
-        val logRepo = get<LogRepository>()
         GlobalScope.launch {
-            logRepo.insert(log)
+            ServiceLocator.logRepo.insert(log)
         }
     }
 

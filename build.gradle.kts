@@ -1,5 +1,4 @@
 import com.android.build.gradle.BaseExtension
-import java.nio.file.Paths
 
 plugins {
     id("MagiskPlugin")
@@ -10,16 +9,15 @@ plugins {
 buildscript {
     repositories {
         google()
-        jcenter()
-        maven { url = uri("https://kotlin.bintray.com/kotlinx") }
+        mavenCentral()
     }
 
-    val vNav = "2.3.0"
+    val vNav = "2.3.5"
     extra["vNav"] = vNav
 
     dependencies {
-        classpath("com.android.tools.build:gradle:4.0.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.0")
+        classpath("com.android.tools.build:gradle:4.2.1")
+        classpath(kotlin("gradle-plugin", version = "1.5.0"))
         classpath("androidx.navigation:navigation-safe-args-gradle-plugin:${vNav}")
 
         // NOTE: Do not place your application dependencies here; they belong
@@ -27,47 +25,32 @@ buildscript {
     }
 }
 
-tasks.register("clean",Delete::class){
+tasks.register("clean", Delete::class) {
     delete(rootProject.buildDir)
 }
 
-val Project.android get() = extensions.getByName<BaseExtension>("android")
-
-fun Task.applyOptimize() = doLast {
-    val aapt2 = Paths.get(project.android.sdkDirectory.path,
-        "build-tools", project.android.buildToolsVersion, "aapt2")
-    val zip = Paths.get(project.buildDir.path, "intermediates",
-        "processed_res", "release", "out", "resources-release.ap_")
-    val optimized = File("${zip}.opt")
-    val cmd = exec {
-        commandLine(aapt2, "optimize", "--collapse-resource-names",
-            "--shorten-resource-paths", "-o", optimized, zip)
-        isIgnoreExitValue = true
-    }
-    if (cmd.exitValue == 0) {
-        optimized.renameTo(zip.toFile())
-    }
-}
+fun Project.android(configuration: BaseExtension.() -> Unit) =
+    extensions.getByName<BaseExtension>("android").configuration()
 
 subprojects {
     repositories {
         google()
-        jcenter()
+        mavenCentral()
         maven { url = uri("https://jitpack.io") }
-        maven { url = uri("http://oss.sonatype.org/content/repositories/snapshots") }
     }
 
     afterEvaluate {
         if (plugins.hasPlugin("com.android.library") ||
             plugins.hasPlugin("com.android.application")) {
-            android.apply {
+            android {
                 compileSdkVersion(30)
-                buildToolsVersion = "30.0.2"
+                buildToolsVersion = "30.0.3"
+                ndkPath = "${System.getenv("ANDROID_SDK_ROOT")}/ndk/magisk"
 
                 defaultConfig {
-                    if (minSdkVersion == null)
-                        minSdkVersion(17)
-                    targetSdkVersion(28)
+                    if (minSdk == null)
+                        minSdk = 21
+                    targetSdk = 30
                 }
 
                 compileOptions {
@@ -86,14 +69,8 @@ subprojects {
             }
         }
 
-        tasks.whenTaskAdded {
-            if (name == "processReleaseResources") {
-                finalizedBy(tasks.create("optimizeReleaseResources").applyOptimize())
-            }
-        }
-
         if (name == "app" || name == "stub") {
-            android.apply {
+            android {
                 signingConfigs {
                     create("config") {
                         Config["keyStore"]?.also {
@@ -108,12 +85,12 @@ subprojects {
                 buildTypes {
                     signingConfigs.getByName("config").also {
                         getByName("debug") {
-                            // If keystore exists, sign the APK with custom signature
-                            if (it.storeFile?.exists() == true)
-                                signingConfig = it
+                            signingConfig = if (it.storeFile?.exists() == true) it
+                            else signingConfigs.getByName("debug")
                         }
                         getByName("release") {
-                            signingConfig = it
+                            signingConfig = if (it.storeFile?.exists() == true) it
+                            else signingConfigs.getByName("debug")
                         }
                     }
                 }

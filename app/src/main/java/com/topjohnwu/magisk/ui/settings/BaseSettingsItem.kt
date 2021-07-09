@@ -3,27 +3,23 @@ package com.topjohnwu.magisk.ui.settings
 import android.content.Context
 import android.content.res.Resources
 import android.view.View
-import androidx.annotation.ArrayRes
 import androidx.annotation.CallSuper
 import androidx.databinding.Bindable
 import com.topjohnwu.magisk.BR
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.databinding.ObservableItem
-import com.topjohnwu.magisk.utils.TransitiveText
-import com.topjohnwu.magisk.utils.asTransitive
+import com.topjohnwu.magisk.utils.TextHolder
 import com.topjohnwu.magisk.utils.set
 import com.topjohnwu.magisk.view.MagiskDialog
-import org.koin.core.KoinComponent
-import org.koin.core.get
 
 sealed class BaseSettingsItem : ObservableItem<BaseSettingsItem>() {
 
     override val layoutRes get() = R.layout.item_settings
 
     open val icon: Int get() = 0
-    open val title: TransitiveText get() = TransitiveText.EMPTY
+    open val title: TextHolder get() = TextHolder.EMPTY
     @get:Bindable
-    open val description: TransitiveText get() = TransitiveText.EMPTY
+    open val description: TextHolder get() = TextHolder.EMPTY
 
     // ---
 
@@ -141,34 +137,29 @@ sealed class BaseSettingsItem : ObservableItem<BaseSettingsItem>() {
         abstract fun getView(context: Context): View
     }
 
-    abstract class Selector : Value<Int>(), KoinComponent {
+    abstract class Selector : Value<Int>() {
 
-        protected val resources get() = get<Resources>()
+        open val entryRes get() = -1
+        open val descriptionRes get() = entryRes
+        open fun entries(res: Resources) = res.getArrayOrEmpty(entryRes)
+        open fun descriptions(res: Resources) = res.getArrayOrEmpty(descriptionRes)
 
-        @ArrayRes open val entryRes = -1
-        @ArrayRes open val entryValRes = -1
-
-        open val entries get() = resources.getArrayOrEmpty(entryRes)
-        open val entryValues get() = resources.getArrayOrEmpty(entryValRes)
-
-        override val description: TransitiveText
-            get() = entries.getOrNull(value)?.asTransitive() ?: TransitiveText.EMPTY
+        override val description = object : TextHolder() {
+            override fun getText(resources: Resources): CharSequence {
+                return descriptions(resources).getOrElse(value) { "" }
+            }
+        }
 
         private fun Resources.getArrayOrEmpty(id: Int): Array<String> =
             runCatching { getStringArray(id) }.getOrDefault(emptyArray())
 
-        override fun onPressed(view: View, callback: Callback) {
-            if (entries.isEmpty() || entryValues.isEmpty()) return
-            super.onPressed(view, callback)
-        }
-
         override fun onPressed(view: View) {
             MagiskDialog(view.context)
-                .applyTitle(title.getText(resources))
+                .applyTitle(title.getText(view.resources))
                 .applyButton(MagiskDialog.ButtonType.NEGATIVE) {
                     titleRes = android.R.string.cancel
                 }
-                .applyAdapter(entries) {
+                .applyAdapter(entries(view.resources)) {
                     value = it
                 }
                 .reveal()

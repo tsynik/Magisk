@@ -4,8 +4,6 @@ plugins {
 
 android {
 
-    ndkVersion = "99.99.99"
-
     externalNativeBuild {
         ndkBuild {
             path("jni/Android.mk")
@@ -16,7 +14,7 @@ android {
         externalNativeBuild {
             ndkBuild {
                 // Pass arguments to ndk-build.
-                arguments("B_MAGISK=1", "B_INIT64=1", "B_BOOT=1", "B_TEST=1",
+                arguments("B_MAGISK=1", "B_INIT=1", "B_BOOT=1", "B_TEST=1",
                         "MAGISK_DEBUG=1", "MAGISK_VERSION=debug", "MAGISK_VER_CODE=INT_MAX")
             }
         }

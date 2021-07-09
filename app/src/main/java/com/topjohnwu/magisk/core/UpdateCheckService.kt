@@ -1,37 +1,28 @@
 package com.topjohnwu.magisk.core
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.work.*
 import com.topjohnwu.magisk.BuildConfig
-import com.topjohnwu.magisk.data.repository.MagiskRepository
+import com.topjohnwu.magisk.di.ServiceLocator
 import com.topjohnwu.magisk.view.Notifications
-import com.topjohnwu.superuser.Shell
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.koin.core.KoinComponent
-import org.koin.core.inject
 import java.util.concurrent.TimeUnit
 
 class UpdateCheckService(context: Context, workerParams: WorkerParameters)
-    : CoroutineWorker(context, workerParams), KoinComponent {
+    : CoroutineWorker(context, workerParams) {
 
-    private val magiskRepo: MagiskRepository by inject()
+    private val svc get() = ServiceLocator.networkService
 
     override suspend fun doWork(): Result {
-        // Make sure shell initializer was ran
-        withContext(Dispatchers.IO) {
-            Shell.getShell()
-        }
-        return magiskRepo.fetchUpdate()?.let {
-            if (BuildConfig.VERSION_CODE < it.app.versionCode)
+        return svc.fetchUpdate()?.run {
+            if (Info.env.isActive && BuildConfig.VERSION_CODE < magisk.versionCode)
                 Notifications.managerUpdate(applicationContext)
-            else if (Info.env.isActive && Info.env.magiskVersionCode < it.magisk.versionCode)
-                Notifications.magiskUpdate(applicationContext)
             Result.success()
         } ?: Result.failure()
     }
 
     companion object {
+        @SuppressLint("NewApi")
         fun schedule(context: Context) {
             if (Config.checkUpdate) {
                 val constraints = Constraints.Builder()

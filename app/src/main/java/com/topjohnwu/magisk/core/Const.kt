@@ -1,69 +1,68 @@
 package com.topjohnwu.magisk.core
 
+import android.os.Build
 import android.os.Process
 import com.topjohnwu.magisk.BuildConfig
 
+@Suppress("DEPRECATION")
 object Const {
+
+    val CPU_ABI: String get() = Build.SUPPORTED_ABIS[0]
+
+    // Null if 32-bit only or 64-bit only
+    val CPU_ABI_32 =
+        if (Build.SUPPORTED_64_BIT_ABIS.isEmpty()) null
+        else Build.SUPPORTED_32_BIT_ABIS.firstOrNull()
 
     // Paths
     lateinit var MAGISKTMP: String
     val MAGISK_PATH get() = "$MAGISKTMP/modules"
-    const val TMP_FOLDER_PATH = "/dev/tmp"
+    const val TMPDIR = "/dev/tmp"
     const val MAGISK_LOG = "/cache/magisk.log"
 
     // Versions
-    const val SNET_EXT_VER = 15
-    const val SNET_REVISION = "d494bc726e86166913a13629e3b1336728ec5d7f"
-    const val BOOTCTL_REVISION = "a6c47f86f10b310358afa9dbe837037dd5d561df"
+    const val SNET_EXT_VER = 17
+    const val SNET_REVISION = "23.0"
+    const val BOOTCTL_REVISION = "22.0"
 
     // Misc
-    const val ANDROID_MANIFEST = "AndroidManifest.xml"
-    const val MAGISK_INSTALL_LOG_FILENAME = "magisk_install_log_%s.log"
-    const val MANAGER_CONFIGS = ".tmp.magisk.config"
     val USER_ID = Process.myUid() / 100000
 
     object Version {
-        const val MIN_VERSION = "v19.0"
-        const val MIN_VERCODE = 19000
+        const val MIN_VERSION = "v20.4"
+        const val MIN_VERCODE = 20400
 
-        fun atLeast_20_2() = Info.env.magiskVersionCode >= 20200
-        fun atLeast_20_4() = Info.env.magiskVersionCode >= 20400
-        fun atLeastCanary() = Info.env.magiskVersionCode > BuildConfig.LATEST_MAGISK / 100 * 100
+        fun atLeast_21_0() = Info.env.magiskVersionCode >= 21000 || isCanary()
+        fun atLeast_21_2() = Info.env.magiskVersionCode >= 21200 || isCanary()
+        fun isCanary() = Info.env.magiskVersionCode % 100 != 0
     }
 
     object ID {
-        const val FETCH_ZIP = 2
-        const val SELECT_BOOT = 3
-
         // notifications
-        const val MAGISK_UPDATE_NOTIFICATION_ID = 4
         const val APK_UPDATE_NOTIFICATION_ID = 5
-        const val DTBO_NOTIFICATION_ID = 7
-        const val HIDE_MANAGER_NOTIFICATION_ID = 8
         const val UPDATE_NOTIFICATION_CHANNEL = "update"
         const val PROGRESS_NOTIFICATION_CHANNEL = "progress"
         const val CHECK_MAGISK_UPDATE_WORKER_ID = "magisk_update"
     }
 
     object Url {
-        const val ZIP_URL = "https://github.com/Magisk-Modules-Repo/%s/archive/master.zip"
-        const val PAYPAL_URL = "https://www.paypal.me/topjohnwu"
         const val PATREON_URL = "https://www.patreon.com/topjohnwu"
-        const val TWITTER_URL = "https://twitter.com/topjohnwu"
-        const val XDA_THREAD = "http://forum.xda-developers.com/showthread.php?t=3432382"
         const val SOURCE_CODE_URL = "https://github.com/topjohnwu/Magisk"
 
+        val CHANGELOG_URL = if (BuildConfig.VERSION_CODE % 100 != 0) Info.remote.magisk.note
+        else "https://topjohnwu.github.io/Magisk/releases/${BuildConfig.VERSION_CODE}.md"
+
         const val GITHUB_RAW_URL = "https://raw.githubusercontent.com/"
-        const val GITHUB_API_URL = "https://api.github.com/users/Magisk-Modules-Repo/"
+        const val GITHUB_API_URL = "https://api.github.com/"
+        const val GITHUB_PAGE_URL = "https://topjohnwu.github.io/magisk-files/"
+        const val JS_DELIVR_URL = "https://cdn.jsdelivr.net/gh/"
+        const val OFFICIAL_REPO = "https://magisk-modules-repo.github.io/submission/modules.json"
     }
 
     object Key {
-        // others
-        const val LINK_KEY = "Link"
-        const val IF_NONE_MATCH = "If-None-Match"
-        const val ETAG_KEY = "ETag"
         // intents
         const val OPEN_SECTION = "section"
+        const val PREV_PKG = "prev_pkg"
     }
 
     object Value {

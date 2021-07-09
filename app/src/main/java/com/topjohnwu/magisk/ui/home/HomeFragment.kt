@@ -2,13 +2,15 @@ package com.topjohnwu.magisk.ui.home
 
 import android.os.Bundle
 import android.view.*
+import android.widget.ImageView
+import android.widget.TextView
 import com.topjohnwu.magisk.R
 import com.topjohnwu.magisk.arch.BaseUIFragment
 import com.topjohnwu.magisk.core.download.BaseDownloader
 import com.topjohnwu.magisk.databinding.FragmentHomeMd2Binding
+import com.topjohnwu.magisk.di.viewModel
 import com.topjohnwu.magisk.events.RebootEvent
 import com.topjohnwu.superuser.Shell
-import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class HomeFragment : BaseUIFragment<HomeViewModel, FragmentHomeMd2Binding>() {
 
@@ -22,20 +24,32 @@ class HomeFragment : BaseUIFragment<HomeViewModel, FragmentHomeMd2Binding>() {
         BaseDownloader.observeProgress(this, viewModel::onProgressUpdate)
     }
 
+    private fun checkTitle(text: TextView, icon: ImageView) {
+        text.post {
+            if (text.layout.getEllipsisCount(0) != 0) {
+                with (icon) {
+                    layoutParams.width = 0
+                    layoutParams.height = 0
+                    requestLayout()
+                }
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         super.onCreateView(inflater, container, savedInstanceState)
 
-        // Set barrier reference IDs in code, since resource IDs will be stripped in release mode
-        binding.homeMagiskWrapper.homeMagiskTitleBarrier.referencedIds =
-            intArrayOf(R.id.home_magisk_button, R.id.home_magisk_title, R.id.home_magisk_icon)
-        binding.homeMagiskWrapper.homeMagiskBarrier.referencedIds =
-            intArrayOf(R.id.home_magisk_latest_version, R.id.home_magisk_installed_version)
-        binding.homeManagerWrapper.homeManagerTitleBarrier.referencedIds =
-            intArrayOf(R.id.home_manager_button, R.id.home_manager_title, R.id.home_manager_icon)
+        // If titles are squished, hide icons
+        with(binding.homeMagiskWrapper) {
+            checkTitle(homeMagiskTitle, homeMagiskIcon)
+        }
+        with(binding.homeManagerWrapper) {
+            checkTitle(homeManagerTitle, homeManagerIcon)
+        }
 
         return binding.root
     }
@@ -46,11 +60,14 @@ class HomeFragment : BaseUIFragment<HomeViewModel, FragmentHomeMd2Binding>() {
             menu.removeItem(R.id.action_reboot)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.action_settings -> HomeFragmentDirections.actionHomeFragmentToSettingsFragment()
-            .navigate()
-        R.id.action_reboot -> RebootEvent.inflateMenu(activity).show()
-        else -> null
-    }?.let { true } ?: super.onOptionsItemSelected(item)
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.action_settings ->
+                HomeFragmentDirections.actionHomeFragmentToSettingsFragment().navigate()
+            R.id.action_reboot -> RebootEvent.inflateMenu(activity).show()
+            else -> return super.onOptionsItemSelected(item)
+        }
+        return true
+    }
 
 }

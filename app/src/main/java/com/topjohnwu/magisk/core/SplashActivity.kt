@@ -1,66 +1,88 @@
 package com.topjohnwu.magisk.core
 
-import android.app.Activity
-import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import com.topjohnwu.magisk.BuildConfig
+import com.topjohnwu.magisk.BuildConfig.APPLICATION_ID
 import com.topjohnwu.magisk.R
-import com.topjohnwu.magisk.data.network.GithubRawServices
-import com.topjohnwu.magisk.ktx.get
+import com.topjohnwu.magisk.core.base.BaseActivity
+import com.topjohnwu.magisk.core.tasks.HideAPK
+import com.topjohnwu.magisk.di.ServiceLocator
 import com.topjohnwu.magisk.ui.MainActivity
+import com.topjohnwu.magisk.view.MagiskDialog
 import com.topjohnwu.magisk.view.Notifications
 import com.topjohnwu.magisk.view.Shortcuts
 import com.topjohnwu.superuser.Shell
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import java.util.concurrent.CountDownLatch
 
-open class SplashActivity : Activity() {
+open class SplashActivity : BaseActivity() {
 
-    override fun attachBaseContext(base: Context) {
-        super.attachBaseContext(base.wrap())
-    }
+    private val latch = CountDownLatch(1)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.SplashTheme)
         super.onCreate(savedInstanceState)
-        GlobalScope.launch(Dispatchers.IO) {
-            initAndStart()
-        }
+        // Pre-initialize root shell
+        Shell.getShell(null) { initAndStart() }
     }
 
-    private fun handleRepackage() {
-        val pkg = Config.suManager
-        if (Config.suManager.isNotEmpty() && packageName == BuildConfig.APPLICATION_ID) {
-            Config.suManager = ""
-            Shell.su("(pm uninstall $pkg)& >/dev/null 2>&1").exec()
-        }
-        if (pkg == packageName) {
+    private fun handleRepackage(pkg: String?) {
+        if (packageName != APPLICATION_ID) {
             runCatching {
-                // We are the manager, remove com.topjohnwu.magisk as it could be malware
-                packageManager.getApplicationInfo(BuildConfig.APPLICATION_ID, 0)
-                Shell.su("(pm uninstall ${BuildConfig.APPLICATION_ID})& >/dev/null 2>&1").exec()
+                // Hidden, remove com.topjohnwu.magisk if exist as it could be malware
+                packageManager.getApplicationInfo(APPLICATION_ID, 0)
+                Shell.su("(pm uninstall $APPLICATION_ID)& >/dev/null 2>&1").exec()
             }
+        } else {
+            if (Config.suManager.isNotEmpty())
+                Config.suManager = ""
+            pkg ?: return
+            if (!Shell.su("(pm uninstall $pkg)& >/dev/null 2>&1").exec().isSuccess)
+                uninstallApp(pkg)
         }
     }
 
     private fun initAndStart() {
-        // Pre-initialize root shell
-        Shell.getShell()
+        if (isRunningAsStub && !Shell.rootAccess()) {
+            runOnUiThread {
+                MagiskDialog(this)
+                    .applyTitle(R.string.unsupport_nonroot_stub_title)
+                    .applyMessage(R.string.unsupport_nonroot_stub_msg)
+                    .applyButton(MagiskDialog.ButtonType.POSITIVE) {
+                        titleRes = R.string.install
+                        onClick { HideAPK.restore(this@SplashActivity) }
+                    }
+                    .cancellable(false)
+                    .reveal()
+            }
+            return
+        }
 
-        Config.initialize()
-        handleRepackage()
+        val prevPkg = intent.getStringExtra(Const.Key.PREV_PKG)
+
+        Config.load(prevPkg)
+        handleRepackage(prevPkg)
         Notifications.setup(this)
         UpdateCheckService.schedule(this)
         Shortcuts.setupDynamic(this)
 
-        // Pre-fetch network stuffs
-        get<GithubRawServices>()
+        // Pre-fetch network services
+        ServiceLocator.networkService
 
         DONE = true
-
-        redirect<MainActivity>().also { startActivity(it) }
+        startActivity(redirect<MainActivity>())
         finish()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun uninstallApp(pkg: String) {
+        val uri = Uri.Builder().scheme("package").opaquePart(pkg).build()
+        val intent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, uri)
+        intent.putExtra(Intent.EXTRA_RETURN_RESULT, true)
+        startActivityForResult(intent) { _, _ ->
+            latch.countDown()
+        }
+        latch.await()
     }
 
     companion object {

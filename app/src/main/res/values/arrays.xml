@@ -16,14 +16,6 @@
         <item>@string/settings_su_app_adb</item>
     </string-array>
 
-    <string-array name="value_array">
-        <item>0</item>
-        <item>1</item>
-        <item>2</item>
-        <item>3</item>
-        <item>4</item>
-    </string-array>
-
     <string-array name="request_timeout">
         <item>@string/settings_su_request_10</item>
         <item>@string/settings_su_request_15</item>
@@ -31,15 +23,6 @@
         <item>@string/settings_su_request_30</item>
         <item>@string/settings_su_request_45</item>
         <item>@string/settings_su_request_60</item>
-    </string-array>
-
-    <string-array name="request_timeout_value">
-        <item>10</item>
-        <item>15</item>
-        <item>20</item>
-        <item>30</item>
-        <item>45</item>
-        <item>60</item>
     </string-array>
 
     <string-array name="auto_response">
@@ -81,6 +64,7 @@
         <item>@string/settings_update_stable</item>
         <item>@string/settings_update_beta</item>
         <item>@string/settings_update_custom</item>
+        <item>Canary</item>
     </string-array>
 
 </resources>
